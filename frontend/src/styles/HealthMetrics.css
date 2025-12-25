@@ -1,0 +1,44 @@
+.page-header {
+  margin-bottom: 24px;
+}
+
+.back-button {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--tg-theme-link-color, #007bff);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--tg-theme-text-color, #000000);
+}
+
+.add-button {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.metric-form {
+  margin-bottom: 24px;
+}
+
+.metrics-list {
+  margin-top: 20px;
+}
+
+.metric-value {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 8px 0;
+  color: var(--tg-theme-text-color, #000000);
+}
+
+.metric-notes {
+  margin: 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
