@@ -12,23 +12,56 @@ function verifyTelegramAuth(authData) {
     return true;
   }
   
+  // Check if hash exists
+  if (!authData.hash) {
+    console.error('No hash provided in auth data');
+    return false;
+  }
+  
+  // Check if bot token is configured
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    console.error('TELEGRAM_BOT_TOKEN is not configured');
+    return false;
+  }
+  
   const { hash, ...data } = authData;
-  const dataCheckString = Object.keys(data)
+  
+  // Remove undefined/null values and sort keys
+  const cleanData = {};
+  Object.keys(data).forEach(key => {
+    if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+      cleanData[key] = data[key];
+    }
+  });
+  
+  // Create data check string
+  const dataCheckString = Object.keys(cleanData)
     .sort()
-    .map(key => `${key}=${data[key]}`)
+    .map(key => `${key}=${cleanData[key]}`)
     .join('\n');
   
+  // Calculate secret key from bot token
   const secretKey = crypto
     .createHash('sha256')
-    .update(process.env.TELEGRAM_BOT_TOKEN || '')
+    .update(process.env.TELEGRAM_BOT_TOKEN)
     .digest();
   
+  // Calculate hash
   const calculatedHash = crypto
     .createHmac('sha256', secretKey)
     .update(dataCheckString)
     .digest('hex');
   
-  return calculatedHash === hash;
+  const isValid = calculatedHash === hash;
+  
+  if (!isValid) {
+    console.error('Hash verification failed');
+    console.error('Expected hash:', calculatedHash);
+    console.error('Received hash:', hash);
+    console.error('Data check string:', dataCheckString);
+  }
+  
+  return isValid;
 }
 
 // Login/Register with Telegram
@@ -36,12 +69,27 @@ router.post('/telegram', async (req, res) => {
   try {
     const authData = req.body;
     
+    console.log('Received auth request:', {
+      id: authData.id,
+      first_name: authData.first_name,
+      has_hash: !!authData.hash,
+      auth_date: authData.auth_date
+    });
+    
     // Verify authentication
     if (!verifyTelegramAuth(authData)) {
-      return res.status(401).json({ error: 'Invalid authentication data' });
+      console.error('Authentication verification failed');
+      return res.status(401).json({ 
+        error: 'Invalid authentication data',
+        details: 'Hash verification failed. Check TELEGRAM_BOT_TOKEN configuration.'
+      });
     }
 
     const { id, first_name, last_name, username, photo_url } = authData;
+    
+    if (!id) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
     
     // Check if user exists
     let user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [id]);
