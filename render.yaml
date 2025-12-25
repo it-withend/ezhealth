@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: health-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Добавьте эти переменные вручную в Render Dashboard:
+      # TELEGRAM_BOT_TOKEN=ваш_токен
+      # TELEGRAM_BOT_USERNAME=имя_бота
+
