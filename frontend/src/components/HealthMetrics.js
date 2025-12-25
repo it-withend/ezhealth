@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { api } from '../services/api';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale/ru';
+import ru from 'date-fns/locale/ru';
 import '../styles/HealthMetrics.css';
 
 function HealthMetrics() {
