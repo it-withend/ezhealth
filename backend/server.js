@@ -21,11 +21,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Initialize database and start server
 initDatabase()
   .then(() => {
-    // Routes
-    app.use('/api/auth', authRoutes);
-    app.use('/api/user', userRoutes);
-    app.use('/api/health', healthRoutes);
-    app.use('/api/analysis', analysisRoutes);
     // Root route
     app.get('/', (req, res) => {
       res.json({ 
@@ -41,6 +36,12 @@ initDatabase()
         }
       });
     });
+
+    // Routes
+    app.use('/api/auth', authRoutes);
+    app.use('/api/user', userRoutes);
+    app.use('/api/health', healthRoutes);
+    app.use('/api/analysis', analysisRoutes);
 
     // Health check
     app.get('/api/health-check', (req, res) => {
