@@ -12,7 +12,21 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Health Tracker API Server',
+    version: '1.0.0',
+    endpoints: {
+      healthCheck: '/api/health-check',
+      auth: '/api/auth',
+      user: '/api/user',
+      health: '/api/health',
+      analysis: '/api/analysis'
+    }
+  });
+});
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
