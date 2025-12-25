@@ -10,7 +10,8 @@ services:
         value: production
       - key: PORT
         value: 10000
-      # Добавьте эти переменные вручную в Render Dashboard:
-      # TELEGRAM_BOT_TOKEN=ваш_токен
-      # TELEGRAM_BOT_USERNAME=имя_бота
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false  # Установите это значение вручную в Render Dashboard
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false  # Установите это значение вручную в Render Dashboard
 
