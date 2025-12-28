@@ -6,13 +6,25 @@ export const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (!window.Telegram?.WebApp) {
-          console.error("Telegram WebApp not found");
+        // 1️⃣ Пытаемся восстановить пользователя
+        const savedUser = localStorage.getItem("user");
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
           setLoading(false);
+          setInitialized(true);
+          return;
+        }
+
+        // 2️⃣ Только Telegram Mini App
+        if (!window.Telegram?.WebApp) {
+          console.warn("Not in Telegram Mini App");
+          setLoading(false);
+          setInitialized(true);
           return;
         }
 
@@ -20,14 +32,14 @@ export const AuthProvider = ({ children }) => {
         tg.ready();
 
         const tgUser = tg.initDataUnsafe?.user;
-
         if (!tgUser) {
-          console.error("No Telegram user");
+          console.warn("No Telegram user");
           setLoading(false);
+          setInitialized(true);
           return;
         }
 
-        // Отправляем данные Telegram на backend
+        // 3️⃣ Авторизация через backend
         const res = await api.post("/auth/telegram", {
           telegram_id: tgUser.id,
           first_name: tgUser.first_name,
@@ -42,11 +54,14 @@ export const AuthProvider = ({ children }) => {
         console.error("Auth error:", err);
       } finally {
         setLoading(false);
+        setInitialized(true);
       }
     };
 
-    initAuth();
-  }, []);
+    if (!initialized) {
+      initAuth();
+    }
+  }, [initialized]);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
@@ -57,6 +72,8 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  if (!ctx) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
   return ctx;
 };
