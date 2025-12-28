@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ThemeProvider } from "./ui/theme/ThemeProvider";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
 import Login from "./components/Login";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
@@ -8,59 +9,79 @@ import Assistant from "./pages/Assistant";
 import Profile from "./pages/Profile";
 import { BottomNav } from "./ui/components/BottomNav";
 
-// ⚠️ ВАЖНО: Login и auth — ВНЕ ThemeProvider
+// Основная логика приложения
 function AppContent() {
   const [page, setPage] = useState("Home");
   const [onboarded, setOnboarded] = useState(false);
   const { user, loading } = useAuth();
 
+  // Проверка онбординга
   useEffect(() => {
-    setOnboarded(localStorage.getItem("onboarding_done") === "1");
+    const onboardedStatus =
+      localStorage.getItem("onboarding_done") === "1";
+    setOnboarded(onboardedStatus);
   }, []);
 
-  // ⛔ Telegram Web (ПК) — показываем заглушку
-  if (!window.Telegram?.WebApp) {
+  // ⏳ Пока идёт авторизация Telegram
+  if (loading) {
     return (
-      <div style={{ padding: 24 }}>
-        Open this app inside Telegram
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#fff",
+          background: "#000",
+        }}
+      >
+        Загрузка...
       </div>
     );
   }
 
-  if (loading) {
-    return <div>Загрузка...</div>;
-  }
-
+  // ❌ Если пользователь не авторизован
   if (!user) {
     return <Login />;
   }
 
+  // 🧭 Навигация по страницам
+  const renderPage = () => {
+    switch (page) {
+      case "Home":
+        return <Home />;
+      case "Assistant":
+        return <Assistant />;
+      case "Profile":
+        return <Profile />;
+      default:
+        return <Home />;
+    }
+  };
+
+  // 🧩 Онбординг
   if (!onboarded) {
-    return (
-      <Onboarding
-        onFinish={() => {
-          localStorage.setItem("onboarding_done", "1");
-          setOnboarded(true);
-        }}
-      />
-    );
+    return <Onboarding onFinish={() => {
+      localStorage.setItem("onboarding_done", "1");
+      setOnboarded(true);
+    }} />;
   }
 
-  // ✅ ThemeProvider ТОЛЬКО для основного UI
   return (
-    <ThemeProvider>
-      {page === "Home" && <Home />}
-      {page === "Assistant" && <Assistant />}
-      {page === "Profile" && <Profile />}
-      <BottomNav current={page} onChange={setPage} />
-    </ThemeProvider>
+    <>
+      {renderPage()}
+      <BottomNav page={page} onChange={setPage} />
+    </>
   );
 }
 
+// Обёртка с провайдерами
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

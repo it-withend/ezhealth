@@ -1,86 +1,62 @@
-import React, { createContext, useContext, useReducer } from 'react';
-import { api } from '../services/api';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { api } from "../services/api";
 
-export const AuthContext = createContext();
-const authReducer = (state, action) => {
-  switch (action.type) {
-    case 'LOGIN':
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: true
-      };
-    case 'LOGOUT':
-      return {
-        ...state,
-        user: null,
-        isAuthenticated: false
-      };
-    case 'SET_LOADING':
-      return {
-        ...state,
-        loading: action.payload
-      };
-    default:
-      return state;
-  }
-};
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, {
-    user: JSON.parse(localStorage.getItem('user')) || null,
-    isAuthenticated: !!localStorage.getItem('user'),
-    loading: false
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = async (userData) => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      // Отправляем данные аутентификации на бэкенд через axios
-      const response = await api.post('/auth/telegram', userData);
-      
-      if (response.data.success && response.data.user) {
-        // Сохраняем пользователя в localStorage
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
-        dispatch({ type: 'LOGIN', payload: response.data.user });
-        return true;
-      } else {
-        console.error('Login failed: No user data in response');
-        return false;
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (!window.Telegram?.WebApp) {
+          console.error("Telegram WebApp not found");
+          setLoading(false);
+          return;
+        }
+
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+
+        const tgUser = tg.initDataUnsafe?.user;
+
+        if (!tgUser) {
+          console.error("No Telegram user");
+          setLoading(false);
+          return;
+        }
+
+        // Отправляем данные Telegram на backend
+        const res = await api.post("/auth/telegram", {
+          telegram_id: tgUser.id,
+          first_name: tgUser.first_name,
+          last_name: tgUser.last_name,
+          username: tgUser.username,
+          photo_url: tgUser.photo_url,
+        });
+
+        setUser(res.data);
+        localStorage.setItem("user", JSON.stringify(res.data));
+      } catch (err) {
+        console.error("Auth error:", err);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Login error:', error.response || error.message || error);
-      return false;
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
+    };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    dispatch({ type: 'LOGOUT' });
-  };
+    initAuth();
+  }, []);
 
   return (
-    <AuthContext.Provider value={{
-      ...state,
-      login,
-      logout
-    }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };
-
-export default AuthContext;
-
