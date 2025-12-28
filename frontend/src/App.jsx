@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { ThemeProvider } from "./ui/theme/ThemeProvider";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./ui/theme/ThemeProvider.jsx";
+import { AuthProvider, useAuth } from "./context/AuthContext.js";
 
-import Login from "./components/Login";
-import Onboarding from "./pages/Onboarding";
-import Home from "./pages/Home";
-import Assistant from "./pages/Assistant";
-import Profile from "./pages/Profile";
-import { BottomNav } from "./ui/components/BottomNav";
+import Login from "./components/Login.js";
+import Onboarding from "./pages/Onboarding.jsx";
+import Home from "./pages/Home.jsx";
+import Assistant from "./pages/Assistant.jsx";
+import Profile from "./pages/Profile.jsx";
+import { BottomNav } from "./ui/components/BottomNav.jsx";
 
 // Основная логика приложения
 function AppContent() {
