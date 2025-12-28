@@ -1,4 +1,4 @@
-import { Button } from "../ui/components/Button";
+import Button from "../ui/components/Button";
 import { useTheme } from "../ui/theme/ThemeProvider";
 
 export default function Onboarding({ onFinish }) {

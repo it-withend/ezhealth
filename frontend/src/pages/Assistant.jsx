@@ -1,6 +1,6 @@
-import { Card } from "../ui/components/Card";
-import { useTheme } from "../ui/theme/ThemeProvider";
-import { useAuth } from "../context/AuthContext";
+import Card from "../ui/components/Card.jsx";
+import { useTheme } from "../ui/theme/ThemeProvider.jsx";
+import { useAuth } from "../context/AuthContext.js";
 
 export default function Assistant() {
   const { theme } = useTheme();

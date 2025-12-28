@@ -1,5 +1,5 @@
-import { Card } from "../ui/components/Card";
-import { Button } from "../ui/components/Button";
+import Card from "../ui/components/Card";
+import Button from "../ui/components/Button";
 import { useTheme } from "../ui/theme/ThemeProvider";
 import { useAuth } from "../context/AuthContext";
 

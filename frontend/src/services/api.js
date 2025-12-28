@@ -1,30 +1,23 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+const API_URL =
+  process.env.REACT_APP_API_URL ||
+  "https://ezhealth-l6zx.onrender.com/api";
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// Add request interceptor to include user_id if available
+// Передаём Telegram initData в каждый запрос
 api.interceptors.request.use((config) => {
-  // Only add user_id if it's not already in the request and we're not making an auth request
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
-  if (user && user.id) {
-    // Don't add user_id to auth endpoints
-    if (!config.url.includes('/auth/')) {
-      if (config.method === 'get') {
-        config.params = { ...config.params, user_id: user.id };
-      } else {
-        config.data = { ...config.data, user_id: user.id };
-      }
-    }
+  if (window.Telegram?.WebApp?.initData) {
+    config.headers["X-Telegram-Init-Data"] =
+      window.Telegram.WebApp.initData;
   }
   return config;
 });
 
 export default api;
-
