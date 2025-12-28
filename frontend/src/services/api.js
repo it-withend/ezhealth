@@ -11,12 +11,16 @@ export const api = axios.create({
 
 // Add request interceptor to include user_id if available
 api.interceptors.request.use((config) => {
+  // Only add user_id if it's not already in the request and we're not making an auth request
   const user = JSON.parse(localStorage.getItem('user') || 'null');
   if (user && user.id) {
-    if (config.method === 'get') {
-      config.params = { ...config.params, user_id: user.id };
-    } else {
-      config.data = { ...config.data, user_id: user.id };
+    // Don't add user_id to auth endpoints
+    if (!config.url.includes('/auth/')) {
+      if (config.method === 'get') {
+        config.params = { ...config.params, user_id: user.id };
+      } else {
+        config.data = { ...config.data, user_id: user.id };
+      }
     }
   }
   return config;
