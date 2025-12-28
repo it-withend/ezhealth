@@ -1,2 +1,4 @@
 app.use("/ai", require("./routes/ai"));
-app.use("/health", require("./routes/health"));
+import healthRoutes from "./routes/health.js";
+
+app.use("/health", healthRoutes);

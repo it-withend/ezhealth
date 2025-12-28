@@ -8,6 +8,7 @@ import userRoutes from './routes/user.js';
 import healthRoutes from './routes/health.js';
 import analysisRoutes from './routes/analysis.js';
 
+app.use("/health", healthRoutes);
 dotenv.config();
 
 const app = express();
