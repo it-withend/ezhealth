@@ -8,59 +8,45 @@ import Assistant from "./pages/Assistant";
 import Profile from "./pages/Profile";
 import { BottomNav } from "./ui/components/BottomNav";
 
-// Обернутый компонент для использования аутентификации
+// ⚠️ ВАЖНО: Login и auth — ВНЕ ThemeProvider
 function AppContent() {
   const [page, setPage] = useState("Home");
   const [onboarded, setOnboarded] = useState(false);
   const { user, loading } = useAuth();
 
-  // Проверяем, завершен ли онбординг
   useEffect(() => {
-    const onboardedStatus = localStorage.getItem("onboarding_done") === "1";
-    setOnboarded(onboardedStatus);
+    setOnboarded(localStorage.getItem("onboarding_done") === "1");
   }, []);
 
-  // Если загружается, показываем индикатор
+  // ⛔ Telegram Web (ПК) — показываем заглушку
+  if (!window.Telegram?.WebApp) {
+    return (
+      <div style={{ padding: 24 }}>
+        Open this app inside Telegram
+      </div>
+    );
+  }
+
   if (loading) {
-    return (
-      <ThemeProvider>
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "center", 
-          alignItems: "center", 
-          height: "100vh",
-          background: "#f5f5f5"
-        }}>
-          <div>Загрузка...</div>
-        </div>
-      </ThemeProvider>
-    );
+    return <div>Загрузка...</div>;
   }
 
-  // Если пользователь не аутентифицирован, показываем Login
   if (!user) {
-    return (
-      <ThemeProvider>
-        <Login />
-      </ThemeProvider>
-    );
+    return <Login />;
   }
 
-  // Если не завершен онбординг, показываем онбординг
   if (!onboarded) {
     return (
-      <ThemeProvider>
-        <Onboarding 
-          onFinish={() => {
-            localStorage.setItem("onboarding_done", "1");
-            setOnboarded(true);
-          }} 
-        />
-      </ThemeProvider>
+      <Onboarding
+        onFinish={() => {
+          localStorage.setItem("onboarding_done", "1");
+          setOnboarded(true);
+        }}
+      />
     );
   }
 
-  // После аутентификации и онбординга показываем основной интерфейс с навигацией
+  // ✅ ThemeProvider ТОЛЬКО для основного UI
   return (
     <ThemeProvider>
       {page === "Home" && <Home />}
