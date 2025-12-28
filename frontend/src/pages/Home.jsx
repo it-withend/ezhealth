@@ -1,7 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
 
 export default function Home() {
+  const navigate = useNavigate();
+
   return (
     <div style={{ padding: 20, fontFamily: "Montserrat" }}>
       <h3>Welcome back 👋</h3>
@@ -18,16 +21,21 @@ export default function Home() {
       />
 
       <h4>Upcoming Appointments</h4>
-      <Card style={{ background: "#479D90", color: "#fff" }}>
-        Dr. Darius Klaine<br />
+      <Card onClick={() => navigate("/assistant")} style={{ cursor: "pointer" }}>
+        <b>Dr. Darius Klaine</b>
+        <br />
         Dentist • Tomorrow • 10:00
       </Card>
 
       <h4 style={{ marginTop: 24 }}>Nearby</h4>
-      <Card>🏥 St. John Hospital • 200m</Card>
+      <Card onClick={() => navigate("/assistant")} style={{ cursor: "pointer" }}>
+        🏥 St. John Hospital • 200m
+      </Card>
 
       <h4 style={{ marginTop: 24 }}>Good to know</h4>
-      <Card>Latest health alerts and AI tips</Card>
+      <Card onClick={() => navigate("/assistant")} style={{ cursor: "pointer" }}>
+        Latest health alerts and AI tips
+      </Card>
     </div>
   );
 }
