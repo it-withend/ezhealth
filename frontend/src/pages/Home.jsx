@@ -6,12 +6,21 @@ import { getHealthSummary } from "../api";
 export default function Home() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    getHealthSummary().then(setData);
+    getHealthSummary()
+      .then(setData)
+      .catch(() => setError(true));
   }, []);
 
-  if (!data) return <p>Loading...</p>;
+  if (error) {
+    return <p style={{ padding: 20 }}>Failed to load data</p>;
+  }
+
+  if (!data) {
+    return <p style={{ padding: 20 }}>Loading...</p>;
+  }
 
   return (
     <div style={{ padding: 20 }}>

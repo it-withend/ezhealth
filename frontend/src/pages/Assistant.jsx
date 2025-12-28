@@ -1,46 +1,28 @@
-import React, { useState } from "react";
-import Button from "../ui/components/Button";
 import Card from "../ui/components/Card";
+import { useNavigate } from "react-router-dom";
 
 export default function Assistant() {
-  const [message, setMessage] = useState("");
-  const [chat, setChat] = useState([]);
-
-  const sendMessage = async () => {
-    const res = await fetch("/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message })
-    });
-
-    const data = await res.json();
-
-    setChat([...chat, { user: message, ai: data.reply }]);
-    setMessage("");
-  };
+  const navigate = useNavigate();
 
   return (
     <div style={{ padding: 20 }}>
-      <h3>Assistant</h3>
+      <h3>Hello! 👋 I’m your virtual assistant.</h3>
+      <p>Select any topic or write your question below.</p>
 
-      {chat.map((c, i) => (
-        <Card key={i}>
-          <b>You:</b> {c.user}
-          <br />
-          <b>AI:</b> {c.ai}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <Card onClick={() => navigate("/assistant/chat")}>
+          📅 Schedule Appointment
         </Card>
-      ))}
-
-      <input
-        value={message}
-        onChange={e => setMessage(e.target.value)}
-        placeholder="Describe symptoms or ask a question"
-        style={{ width: "100%", padding: 12, marginTop: 12 }}
-      />
-
-      <Button onClick={sendMessage} style={{ marginTop: 12 }}>
-        Send
-      </Button>
+        <Card onClick={() => navigate("/assistant/chat")}>
+          💬 Get Advice
+        </Card>
+        <Card>
+          📄 Browse Documents
+        </Card>
+        <Card>
+          👨‍⚕️ Review Doctors
+        </Card>
+      </div>
     </div>
   );
 }

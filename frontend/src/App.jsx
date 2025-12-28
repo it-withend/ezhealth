@@ -5,6 +5,7 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Assistant from "./pages/Assistant";
 import Dashboard from "./components/Dashboard";
+import Profile from "./pages/Profile";
 
 import BottomNav from "./ui/components/BottomNav";
 
@@ -39,6 +40,16 @@ function App() {
           element={
             <>
               <Dashboard />
+              <BottomNav />
+            </>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <>
+              <Profile />
               <BottomNav />
             </>
           }
