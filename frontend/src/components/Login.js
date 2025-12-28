@@ -1,11 +1,9 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Login.css';
 
 function Login() {
   const { login, loading } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     // Check if Telegram WebApp is available
@@ -131,7 +129,8 @@ function Login() {
       
       const success = await login(formattedData);
       if (success) {
-        navigate('/dashboard');
+        // После успешного логина компонент App.jsx сам переключится на онбординг или основной интерфейс
+        console.log('Login successful');
       } else {
         console.error('Login failed - check backend logs');
         if (window.Telegram?.WebApp) {
@@ -162,7 +161,8 @@ function Login() {
       
       const success = await login(testAuthData);
       if (success) {
-        navigate('/dashboard');
+        // После успешного логина компонент App.jsx сам переключится на онбординг или основной интерфейс
+        console.log('Development login successful');
       } else {
         alert('Ошибка входа. Убедитесь, что backend запущен и NODE_ENV=development');
       }

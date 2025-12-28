@@ -1,9 +1,18 @@
 import { Card } from "../ui/components/Card";
 import { Button } from "../ui/components/Button";
 import { useTheme } from "../ui/theme/ThemeProvider";
+import { useAuth } from "../context/AuthContext";
 
 export default function Profile() {
   const { theme, toggleTheme, mode } = useTheme();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    // Очистим также локальное хранилище для онбординга, чтобы пользователь прошел его снова
+    localStorage.removeItem("onboarding_done");
+    window.location.reload(); // Перезагрузка страницы для обновления состояния
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -18,7 +27,9 @@ export default function Profile() {
               margin: "0 auto 12px",
             }}
           />
-          <h2 style={{ color: theme.text }}>Kathryn Murphy</h2>
+          <h2 style={{ color: theme.text }}>
+            {user?.first_name || user?.username || "User"}
+          </h2>
           <p style={{ color: theme.textMuted }}>Patient</p>
         </div>
       </Card>
@@ -36,7 +47,7 @@ export default function Profile() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <Button>Log out</Button>
+        <Button onClick={handleLogout}>Log out</Button>
       </div>
     </div>
   );

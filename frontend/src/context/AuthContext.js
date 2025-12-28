@@ -36,11 +36,33 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
-      // Сохраняем пользователя в localStorage
-      localStorage.setItem('user', JSON.stringify(userData));
+      // Отправляем данные аутентификации на бэкенд
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}/auth/telegram`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+      });
       
-      dispatch({ type: 'LOGIN', payload: userData });
-      return true;
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Login failed:', errorData);
+        return false;
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.user) {
+        // Сохраняем пользователя в localStorage
+        localStorage.setItem('user', JSON.stringify(result.user));
+        
+        dispatch({ type: 'LOGIN', payload: result.user });
+        return true;
+      } else {
+        console.error('Login failed: No user data in response');
+        return false;
+      }
     } catch (error) {
       console.error('Login error:', error);
       return false;
