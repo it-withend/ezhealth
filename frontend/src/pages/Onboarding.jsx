@@ -1,7 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../ui/components/Button";
 
 export default function Onboarding() {
+  const navigate = useNavigate();
+
   return (
     <div
       style={{
@@ -30,12 +33,13 @@ export default function Onboarding() {
       </p>
 
       <Button
+        onClick={() => navigate("/home")}
         style={{
           marginTop: 32,
           background: "#FFFFFF",
           color: "#479D90",
           borderRadius: 12,
-          padding: "12px 24px",
+          padding: "14px 28px",
           fontWeight: 500
         }}
       >
