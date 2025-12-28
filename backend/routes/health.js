@@ -1,7 +1,7 @@
 import express from 'express';
 import { dbGet, dbAll, dbRun } from '../database.js';
 
-const router = express.Router();
+const router = require("express").Router();
 
 // Add health metric
 router.post('/metrics', async (req, res) => {
@@ -108,5 +108,49 @@ router.delete('/metrics/:id', async (req, res) => {
   }
 });
 
-export default router;
+/**
+ * GET /health/summary
+ * данные для Home
+ */
+router.get("/summary", (req, res) => {
+  res.json({
+    appointments: [
+      {
+        id: 1,
+        doctor: "Dr. Darius Klaine",
+        specialty: "Dentist",
+        date: "Tomorrow",
+        time: "10:00"
+      }
+    ],
+    nearby: [
+      {
+        id: 1,
+        name: "St. John Hospital",
+        distance: "200m"
+      }
+    ],
+    alerts: [
+      {
+        id: 1,
+        text: "Latest health alerts and AI tips"
+      }
+    ]
+  });
+});
 
+/**
+ * GET /health/metrics
+ */
+router.get("/metrics", (req, res) => {
+  res.json({
+    pulse: 72,
+    sleep: 7.4,
+    pressure: "120/80",
+    sugar: 5.2,
+    weight: 74
+  });
+});
+
+module.exports = router;
+export default router;
