@@ -3,7 +3,21 @@ import express from "express";
 const router = express.Router();
 
 /**
- * GET /health/summary
+ * GET /api/health
+ */
+router.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "health",
+    endpoints: {
+      summary: "/api/health/summary",
+      metrics: "/api/health/metrics"
+    }
+  });
+});
+
+/**
+ * GET /api/health/summary
  */
 router.get("/summary", (req, res) => {
   res.json({
@@ -33,7 +47,7 @@ router.get("/summary", (req, res) => {
 });
 
 /**
- * GET /health/metrics
+ * GET /api/health/metrics
  */
 router.get("/metrics", (req, res) => {
   res.json({
