@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer } from 'react';
+import { api } from '../services/api';
 
 export const AuthContext = createContext();
 const authReducer = (state, action) => {
@@ -36,35 +37,21 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
-      // Отправляем данные аутентификации на бэкенд
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}/auth/telegram`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData)
-      });
+      // Отправляем данные аутентификации на бэкенд через axios
+      const response = await api.post('/auth/telegram', userData);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Login failed:', errorData);
-        return false;
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.user) {
+      if (response.data.success && response.data.user) {
         // Сохраняем пользователя в localStorage
-        localStorage.setItem('user', JSON.stringify(result.user));
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        dispatch({ type: 'LOGIN', payload: result.user });
+        dispatch({ type: 'LOGIN', payload: response.data.user });
         return true;
       } else {
         console.error('Login failed: No user data in response');
         return false;
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error:', error.response || error.message || error);
       return false;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });

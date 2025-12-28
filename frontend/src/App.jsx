@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { ThemeProvider } from "./ui/theme/ThemeProvider";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./components/Login";
+import Onboarding from "./pages/Onboarding";
+import Home from "./pages/Home";
+import Assistant from "./pages/Assistant";
+import Profile from "./pages/Profile";
+import BottomNav from "./ui/components/BottomNav";
 
 // Обернутый компонент для использования аутентификации
 function AppContent() {
