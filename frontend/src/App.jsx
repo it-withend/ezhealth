@@ -55,3 +55,42 @@ export default function App() {
     </AuthProvider>
   );
 }
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Onboarding />} />
+
+        <Route
+          path="/home"
+          element={
+            <>
+              <Home />
+              <BottomNav />
+            </>
+          }
+        />
+
+        <Route
+          path="/assistant"
+          element={
+            <>
+              <Assistant />
+              <BottomNav />
+            </>
+          }
+        />
+
+        <Route
+          path="/health"
+          element={
+            <>
+              <Dashboard />
+              <BottomNav />
+            </>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
+}

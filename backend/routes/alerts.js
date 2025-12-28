@@ -1,8 +1,15 @@
-
 const router = require("express").Router();
 
-router.post("/", (req, res) => {
-  res.json({ status: "alert sent" });
+router.post("/", async (req, res) => {
+  const { type, value, userId } = req.body;
+
+  // дальше — SMS / email / trusted contacts
+  res.json({
+    status: "alert_sent",
+    type,
+    value,
+    userId
+  });
 });
 
 module.exports = router;

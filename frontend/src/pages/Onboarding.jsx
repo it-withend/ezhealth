@@ -1,49 +1,42 @@
+import React from "react";
 import Button from "../ui/components/Button";
-import { useTheme } from "../ui/theme/ThemeProvider";
 
-export default function Onboarding({ onFinish }) {
-  const { theme } = useTheme();
-
+export default function Onboarding() {
   return (
     <div
       style={{
-        minHeight: "100vh",
-        padding: 24,
+        backgroundColor: "#479D90",
+        height: "100vh",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
-        background: theme.primary,
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#fff",
+        padding: 24,
+        textAlign: "center",
+        fontFamily: "Montserrat"
       }}
     >
-      <div />
+      <img
+        src="/logo.png"
+        alt="logo"
+        style={{ width: 120, marginBottom: 24 }}
+      />
 
-      <div style={{ textAlign: "center" }}>
-        <h1
-          style={{
-            color: "#fff",
-            fontSize: 28,
-            marginBottom: 12,
-          }}
-        >
-          Your digital healthcare assistant
-        </h1>
-        <p
-          style={{
-            color: "rgba(255,255,255,0.8)",
-            fontSize: 15,
-            lineHeight: 1.5,
-          }}
-        >
-          Book appointments, review doctors
-          <br />
-          and track your medical history
-        </p>
-      </div>
+      <h2>Your digital healthcare assistant</h2>
+
+      <p style={{ maxWidth: 320, opacity: 0.9 }}>
+        Book appointments, review doctors and track your medical history
+      </p>
 
       <Button
-        onClick={() => {
-          localStorage.setItem("onboarding_done", "1");
-          onFinish();
+        style={{
+          marginTop: 32,
+          background: "#FFFFFF",
+          color: "#479D90",
+          borderRadius: 12,
+          padding: "12px 24px",
+          fontWeight: 500
         }}
       >
         Get Started
