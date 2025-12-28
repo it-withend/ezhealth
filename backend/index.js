@@ -1,0 +1,1 @@
+app.use("/ai", require("./routes/ai"));

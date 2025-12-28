@@ -1,15 +1,46 @@
-import Card from "../ui/components/Card.jsx";
-import { useTheme } from "../ui/theme/ThemeProvider.jsx";
-import { useAuth } from "../context/AuthContext.js";
+import React, { useState } from "react";
+import Button from "../ui/components/Button";
+import Card from "../ui/components/Card";
 
 export default function Assistant() {
-  const { theme } = useTheme();
-  const { user } = useAuth();
-  
+  const [message, setMessage] = useState("");
+  const [chat, setChat] = useState([]);
+
+  const sendMessage = async () => {
+    const res = await fetch("/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+
+    const data = await res.json();
+
+    setChat([...chat, { user: message, ai: data.reply }]);
+    setMessage("");
+  };
+
   return (
     <div style={{ padding: 20 }}>
-      <h1 style={{ color: theme.text }}>Assistant</h1>
-      <Card><p>Schedule Appointment</p></Card>
+      <h3>Assistant</h3>
+
+      {chat.map((c, i) => (
+        <Card key={i}>
+          <b>You:</b> {c.user}
+          <br />
+          <b>AI:</b> {c.ai}
+        </Card>
+      ))}
+
+      <input
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        placeholder="Describe symptoms or ask a question"
+        style={{ width: "100%", padding: 12, marginTop: 12 }}
+      />
+
+      <Button onClick={sendMessage} style={{ marginTop: 12 }}>
+        Send
+      </Button>
     </div>
   );
 }
