@@ -1,19 +1,21 @@
+
+import React from "react";
 import Card from "../ui/components/Card";
-import Button from "../ui/components/Button";
-import { useTheme } from "../ui/theme/ThemeProvider";
-import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
-  const { theme } = useTheme();
-  const { user } = useAuth();
-  
   return (
     <div style={{ padding: 20 }}>
-      <h1 style={{ color: theme.text }}>Welcome back, {user?.first_name || user?.username || "User"} 👋</h1>
-      <Card>
-        <p style={{ color: theme.text }}>Dr. Darius Klaine</p>
-        <Button>View Details</Button>
-      </Card>
+      <h2>Welcome back 👋</h2>
+      <input placeholder="Find a doctor or specialty" />
+
+      <h3>Upcoming Appointments</h3>
+      <Card>Doctor Appointment</Card>
+
+      <h3>Nearby</h3>
+      <Card>Hospital • 200m</Card>
+
+      <h3>Good to know</h3>
+      <Card>Health alerts and updates</Card>
     </div>
   );
 }
