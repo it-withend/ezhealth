@@ -89,6 +89,9 @@ export default function Profile() {
       navigate("/");
     }
   };
+
+  return (
+    <div className="profile-container">
       {/* Header */}
       <div className="profile-header">
         <h1>Мой профиль</h1>

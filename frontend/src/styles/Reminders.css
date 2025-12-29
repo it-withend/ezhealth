@@ -222,11 +222,6 @@
 .delete-btn:hover {
   transform: scale(1.1);
 }
-}
-
-.delete-btn:hover {
-  transform: scale(1.2);
-}
 
 .empty-state {
   text-align: center;

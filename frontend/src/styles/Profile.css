@@ -86,7 +86,6 @@
 .edit-btn:hover {
   background: #336B5E;
 }
-}
 
 .edit-form {
   background: white;
@@ -356,7 +355,6 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
 }
 
 .logout-btn:hover {

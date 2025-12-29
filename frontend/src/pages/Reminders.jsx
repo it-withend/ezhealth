@@ -188,4 +188,8 @@ export default function Reminders() {
             </Card>
           ))
         ) : (
-          <p className="empty-state">Пока нет напоминаний. Добавьте первое!</p>
+          <p className="empty-state">Пока нет напоминаний. Добавьте первое!</p>        )}
+      </div>
+    </div>
+  );
+}
