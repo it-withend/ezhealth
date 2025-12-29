@@ -5,18 +5,19 @@
 }
 
 :root {
-  --primary: #2D9B8C;
-  --primary-dark: #1e6f63;
-  --primary-light: #4db8a8;
+  --primary: #479D90;
+  --primary-dark: #336B5E;
+  --primary-light: #5FADE8;
   --background: #FFFFFF;
-  --accent: #B8E6E0;
-  --text: #1a1a1a;
+  --pill: #CDF1ED;
+  --accent: #479D90;
+  --text: #000000;
   --text-light: #666666;
   --border: #E0E0E0;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;

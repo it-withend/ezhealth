@@ -6,7 +6,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #2D9B8C 0%, #1e6f63 100%);
+  background: linear-gradient(135deg, #479D90 0%, #336B5E 100%);
   color: #ffffff;
   overflow: hidden;
 }
@@ -150,7 +150,7 @@
 
 .get-started-btn {
   background-color: #ffffff;
-  color: #2D9B8C;
+  color: #479D90;
   border: none;
   border-radius: 12px;
   padding: 16px 48px;

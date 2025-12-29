@@ -20,14 +20,14 @@
   text-align: center;
   font-size: 18px;
   margin: 0;
-  color: #2D9B8C;
+  color: #479D90;
 }
 
 .back-btn {
   background: none;
   border: none;
   font-size: 16px;
-  color: #2D9B8C;
+  color: #479D90;
   cursor: pointer;
   padding: 0;
   font-weight: 500;
@@ -35,7 +35,7 @@
 }
 
 .back-btn:hover {
-  color: #1e6f63;
+  color: #336B5E;
 }
 
 .report-btn {
@@ -85,7 +85,7 @@
 }
 
 .message.user .message-bubble {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border-radius: 12px 4px 12px 12px;
 }
@@ -170,7 +170,7 @@
   text-align: left;
   cursor: pointer;
   transition: background 0.2s ease;
-  color: #2D9B8C;
+  color: #479D90;
 }
 
 .upload-menu button:hover {
@@ -206,7 +206,7 @@
   padding: 10px;
   font-size: 14px;
   outline: none;
-  font-family: inherit;
+  font-family: 'Montserrat', inherit;
 }
 
 .chat-input::placeholder {
@@ -214,7 +214,7 @@
 }
 
 .send-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border: none;
   border-radius: 8px;
@@ -226,7 +226,7 @@
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #1e6f63;
+  background: #336B5E;
 }
 
 .send-btn:disabled {

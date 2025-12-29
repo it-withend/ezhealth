@@ -1,14 +1,13 @@
 
 export const theme = {
   colors: {
-    primary: "#2D9B8C",
-    primaryDark: "#1e6f63",
-    primaryLight: "#4db8a8",
+    primary: "#479D90",
+    primaryDark: "#336B5E",
+    primaryLight: "#5FADE8",
     background: "#FFFFFF",
-    accent: "#B8E6E0",
-    text: "#1a1a1a",
-    textLight: "#666666",
-    border: "#E0E0E0"
+    pill: "#CDF1ED",
+    accent: "#479D90",
+    text: "#000000",
   },
   radius: {
     card: "16px",

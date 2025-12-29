@@ -3,6 +3,7 @@
   background-color: #f9f9f9;
   padding: 0;
   padding-top: 16px;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .home-header {
@@ -32,7 +33,7 @@
 }
 
 .notification-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   width: 40px;
   height: 40px;
@@ -46,7 +47,7 @@
 }
 
 .notification-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
   transform: scale(1.05);
 }
 
@@ -67,7 +68,7 @@
 }
 
 .search-input:focus {
-  border-color: #2D9B8C;
+  border-color: #479D90;
   box-shadow: 0 0 0 3px rgba(45, 155, 140, 0.1);
 }
 
@@ -102,7 +103,7 @@
 }
 
 .see-all-link {
-  color: #2D9B8C;
+  color: #479D90;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
@@ -110,7 +111,7 @@
 }
 
 .see-all-link:hover {
-  color: #1e6f63;
+  color: #336B5E;
 }
 
 /* Appointments */
@@ -121,7 +122,7 @@
 }
 
 .appointment-card {
-  background: linear-gradient(135deg, #2D9B8C 0%, #1e6f63 100%);
+  background: linear-gradient(135deg, #479D90 0%, #336B5E 100%);
   color: white;
   cursor: pointer;
   padding: 16px;
@@ -214,7 +215,7 @@
   justify-content: center;
   width: 48px;
   height: 48px;
-  background: #2D9B8C;
+  background: #479D90;
   border-radius: 50%;
   color: white;
   text-align: center;
@@ -238,7 +239,7 @@
   gap: 12px;
   padding: 12px;
   background: #f0f9f8;
-  border-left: 4px solid #2D9B8C;
+  border-left: 4px solid #479D90;
   border-radius: 8px;
 }
 

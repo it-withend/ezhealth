@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { EditIcon, DeleteIcon, AddIcon, LogoutIcon } from "../ui/icons/icons";
 import "../styles/Profile.css";
 
 export default function Profile() {
@@ -22,6 +23,40 @@ export default function Profile() {
   ]);
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContact, setNewContact] = useState({ name: "", telegram: "" });
+
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const savedProfile = localStorage.getItem("userProfile");
+    const savedContacts = localStorage.getItem("trustedContacts");
+    
+    if (savedProfile) {
+      try {
+        const parsed = JSON.parse(savedProfile);
+        setProfile(parsed);
+        setFormData(parsed);
+      } catch (e) {
+        console.error("Failed to load profile");
+      }
+    }
+    
+    if (savedContacts) {
+      try {
+        setTrustedContacts(JSON.parse(savedContacts));
+      } catch (e) {
+        console.error("Failed to load contacts");
+      }
+    }
+  }, []);
+
+  // Save profile to localStorage
+  useEffect(() => {
+    localStorage.setItem("userProfile", JSON.stringify(profile));
+  }, [profile]);
+
+  // Save contacts to localStorage
+  useEffect(() => {
+    localStorage.setItem("trustedContacts", JSON.stringify(trustedContacts));
+  }, [trustedContacts]);
 
   const handleSaveProfile = () => {
     setProfile(formData);
@@ -49,15 +84,14 @@ export default function Profile() {
   };
 
   const logout = () => {
-    localStorage.clear();
-    navigate("/");
+    if (window.confirm("Вы уверены, что хотите выйти?")) {
+      localStorage.clear();
+      navigate("/");
+    }
   };
-
-  return (
-    <div className="profile-container">
       {/* Header */}
       <div className="profile-header">
-        <h1>My Profile</h1>
+        <h1>Мой профиль</h1>
       </div>
 
       {/* Profile Info Card */}
@@ -71,8 +105,8 @@ export default function Profile() {
             <p className="profile-email">{profile.email}</p>
           </div>
           {!isEditing && (
-            <button className="edit-btn" onClick={() => setIsEditing(true)}>
-              Edit
+            <button className="edit-btn" onClick={() => setIsEditing(true)} title="Редактировать">
+              <EditIcon />
             </button>
           )}
         </div>
@@ -81,9 +115,9 @@ export default function Profile() {
       {/* Edit Mode */}
       {isEditing && (
         <Card className="edit-form">
-          <h3>Edit Profile</h3>
+          <h3>Редактирование профиля</h3>
           <div className="form-group">
-            <label>Name</label>
+            <label>Имя</label>
             <input
               type="text"
               value={formData.name}
@@ -99,7 +133,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Phone</label>
+            <label>Телефон</label>
             <input
               type="tel"
               value={formData.phone}
@@ -107,7 +141,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Date of Birth</label>
+            <label>Дата рождения</label>
             <input
               type="date"
               value={formData.dateOfBirth}
@@ -115,7 +149,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Blood Type</label>
+            <label>Группа крови</label>
             <input
               type="text"
               value={formData.bloodType}
@@ -123,7 +157,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Allergies</label>
+            <label>Аллергии</label>
             <input
               type="text"
               value={formData.allergies}
@@ -131,8 +165,8 @@ export default function Profile() {
             />
           </div>
           <div className="form-actions">
-            <button className="save-btn" onClick={handleSaveProfile}>Save</button>
-            <button className="cancel-btn" onClick={() => setIsEditing(false)}>Cancel</button>
+            <button className="save-btn" onClick={handleSaveProfile}>Сохранить</button>
+            <button className="cancel-btn" onClick={() => setIsEditing(false)}>Отмена</button>
           </div>
         </Card>
       )}
@@ -140,17 +174,17 @@ export default function Profile() {
       {/* Medical Info */}
       {!isEditing && (
         <Card className="info-card">
-          <h3>Medical Information</h3>
+          <h3>Медицинская информация</h3>
           <div className="info-row">
-            <span className="label">Blood Type:</span>
+            <span className="label">Группа крови:</span>
             <span className="value">{profile.bloodType}</span>
           </div>
           <div className="info-row">
-            <span className="label">Allergies:</span>
+            <span className="label">Аллергии:</span>
             <span className="value">{profile.allergies}</span>
           </div>
           <div className="info-row">
-            <span className="label">Medical Conditions:</span>
+            <span className="label">Медицинские состояния:</span>
             <span className="value">{profile.medicalConditions}</span>
           </div>
         </Card>
@@ -159,25 +193,25 @@ export default function Profile() {
       {/* Trusted Contacts */}
       <div className="section">
         <div className="section-header">
-          <h3>Trusted Contacts</h3>
-          <button className="add-btn" onClick={() => setShowAddContact(!showAddContact)}>
-            + Add
+          <h3>Доверенные контакты</h3>
+          <button className="add-btn" onClick={() => setShowAddContact(!showAddContact)} title="Добавить контакт">
+            <AddIcon />
           </button>
         </div>
 
         {showAddContact && (
           <Card className="add-contact-form">
             <div className="form-group">
-              <label>Name</label>
+              <label>Имя</label>
               <input
                 type="text"
-                placeholder="Contact name"
+                placeholder="Имя контакта"
                 value={newContact.name}
                 onChange={e => setNewContact({ ...newContact, name: e.target.value })}
               />
             </div>
             <div className="form-group">
-              <label>Telegram Username</label>
+              <label>Telegram пользователь</label>
               <input
                 type="text"
                 placeholder="e.g., username"
@@ -186,8 +220,8 @@ export default function Profile() {
               />
             </div>
             <div className="form-actions">
-              <button className="save-btn" onClick={handleAddContact}>Add Contact</button>
-              <button className="cancel-btn" onClick={() => setShowAddContact(false)}>Cancel</button>
+              <button className="save-btn" onClick={handleAddContact}>Добавить контакт</button>
+              <button className="cancel-btn" onClick={() => setShowAddContact(false)}>Отмена</button>
             </div>
           </Card>
         )}
@@ -205,9 +239,9 @@ export default function Profile() {
               <button
                 className="remove-btn"
                 onClick={() => removeContact(contact.id)}
-                title="Remove contact"
+                title="Удалить контакт"
               >
-                ✕
+                <DeleteIcon />
               </button>
             </Card>
           ))}
@@ -216,9 +250,10 @@ export default function Profile() {
 
       {/* Settings & Logout */}
       <Card className="settings-card">
-        <button className="settings-btn">⚙️ Settings</button>
-        <button className="help-btn">❓ Help & Support</button>
-        <button className="logout-btn" onClick={logout}>🚪 Logout</button>
+        <button className="logout-btn" onClick={logout} title="Выйти из аккаунта">
+          <LogoutIcon />
+          <span>Выход</span>
+        </button>
       </Card>
     </div>
   );

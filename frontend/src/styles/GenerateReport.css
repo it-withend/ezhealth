@@ -24,14 +24,14 @@
   text-align: center;
   font-size: 18px;
   margin: 0;
-  color: #2D9B8C;
+  color: #479D90;
 }
 
 .back-btn {
   background: none;
   border: none;
   font-size: 16px;
-  color: #2D9B8C;
+  color: #479D90;
   cursor: pointer;
   padding: 0;
   font-weight: 500;
@@ -39,7 +39,7 @@
 }
 
 .back-btn:hover {
-  color: #1e6f63;
+  color: #336B5E;
 }
 
 .header-spacer {
@@ -68,7 +68,7 @@
 }
 
 .generate-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border: none;
   border-radius: 8px;
@@ -80,7 +80,7 @@
 }
 
 .generate-btn:hover:not(:disabled) {
-  background: #1e6f63;
+  background: #336B5E;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(45, 155, 140, 0.2);
 }
@@ -107,7 +107,7 @@
   background: #f9f9f9;
   padding: 16px;
   border-radius: 8px;
-  border-left: 4px solid #2D9B8C;
+  border-left: 4px solid #479D90;
 }
 
 .report-text p {
@@ -135,21 +135,21 @@
 }
 
 .download-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
 }
 
 .download-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
 }
 
 .share-btn {
-  background: #4db8a8;
+  background: #5FADE8;
   color: white;
 }
 
 .share-btn:hover {
-  background: #2D9B8C;
+  background: #479D90;
 }
 
 .regenerate-btn {

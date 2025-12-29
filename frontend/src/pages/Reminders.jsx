@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { AddIcon, DeleteIcon, CheckIcon } from "../ui/icons/icons";
 import "../styles/Reminders.css";
 
 export default function Reminders() {
@@ -51,6 +52,23 @@ export default function Reminders() {
     frequency: "Daily"
   });
 
+  // Load reminders from localStorage
+  useEffect(() => {
+    const savedReminders = localStorage.getItem("reminders");
+    if (savedReminders) {
+      try {
+        setReminders(JSON.parse(savedReminders));
+      } catch (e) {
+        console.error("Failed to load reminders");
+      }
+    }
+  }, []);
+
+  // Save reminders to localStorage
+  useEffect(() => {
+    localStorage.setItem("reminders", JSON.stringify(reminders));
+  }, [reminders]);
+
   const toggleReminder = (id) => {
     setReminders(prev =>
       prev.map(r => r.id === id ? { ...r, completed: !r.completed } : r)
@@ -84,17 +102,17 @@ export default function Reminders() {
   return (
     <div className="reminders-container">
       <div className="reminders-header">
-        <h1>Health Reminders</h1>
-        <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)}>
-          +
+        <h1>Напоминания здоровья</h1>
+        <button className="add-btn" onClick={() => setShowAddForm(!showAddForm)} title="Добавить напоминание">
+          <AddIcon />
         </button>
       </div>
 
       {showAddForm && (
         <div className="add-form-card">
-          <h3>Add New Reminder</h3>
+          <h3>Добавить новое напоминание</h3>
           <div className="form-group">
-            <label>Type</label>
+            <label>Тип</label>
             <select
               value={newReminder.type}
               onChange={e => setNewReminder({ ...newReminder, type: e.target.value })}
@@ -103,7 +121,7 @@ export default function Reminders() {
             </select>
           </div>
           <div className="form-group">
-            <label>Title</label>
+            <label>Название</label>
             <input
               type="text"
               placeholder="e.g., Aspirin"
@@ -113,7 +131,7 @@ export default function Reminders() {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Time</label>
+              <label>Время</label>
               <input
                 type="time"
                 value={newReminder.time}
@@ -121,21 +139,21 @@ export default function Reminders() {
               />
             </div>
             <div className="form-group">
-              <label>Frequency</label>
+              <label>Частота</label>
               <select
                 value={newReminder.frequency}
                 onChange={e => setNewReminder({ ...newReminder, frequency: e.target.value })}
               >
-                <option>Daily</option>
-                <option>Every 2 hours</option>
-                <option>Every 4 hours</option>
-                <option>Weekly</option>
+                <option>Ежедневно</option>
+                <option>Каждые 2 часа</option>
+                <option>Каждые 4 часа</option>
+                <option>Еженедельно</option>
               </select>
             </div>
           </div>
           <div className="form-actions">
-            <button className="save-btn" onClick={addReminder}>Save</button>
-            <button className="cancel-btn" onClick={() => setShowAddForm(false)}>Cancel</button>
+            <button className="save-btn" onClick={addReminder}>Сохранить</button>
+            <button className="cancel-btn" onClick={() => setShowAddForm(false)}>Отмена</button>
           </div>
         </div>
       )}
@@ -165,14 +183,9 @@ export default function Reminders() {
                 onClick={() => deleteReminder(reminder.id)}
                 title="Delete reminder"
               >
-                ✕
+                <DeleteIcon />
               </button>
             </Card>
           ))
         ) : (
-          <p className="empty-state">No reminders yet. Add your first one!</p>
-        )}
-      </div>
-    </div>
-  );
-}
+          <p className="empty-state">Пока нет напоминаний. Добавьте первое!</p>

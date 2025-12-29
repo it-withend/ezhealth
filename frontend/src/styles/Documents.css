@@ -4,6 +4,7 @@
   padding: 16px;
   padding-bottom: 100px;
   min-height: 100vh;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .documents-header {
@@ -18,24 +19,29 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0;
-  color: #1a1a1a;
+  color: #000;
 }
 
 .upload-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 10px 16px;
+  padding: 8px 12px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
 }
 
 .upload-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
   transform: translateY(-1px);
 }
 
@@ -54,7 +60,7 @@
 }
 
 .upload-area {
-  border: 2px dashed #2D9B8C;
+  border: 2px dashed #479D90;
   border-radius: 12px;
   padding: 32px 16px;
   text-align: center;
@@ -104,11 +110,11 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
-  font-family: inherit;
+  font-family: 'Montserrat', inherit;
 }
 
 .select-input:focus {
-  border-color: #2D9B8C;
+  border-color: #479D90;
   box-shadow: 0 0 0 3px rgba(45, 155, 140, 0.1);
 }
 
@@ -130,12 +136,12 @@
 }
 
 .submit-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
 }
 
 .submit-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
 }
 
 .cancel-btn {
@@ -165,11 +171,11 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
-  font-family: inherit;
+  font-family: 'Montserrat', inherit;
 }
 
 .search-input:focus {
-  border-color: #2D9B8C;
+  border-color: #479D90;
   box-shadow: 0 0 0 3px rgba(45, 155, 140, 0.1);
 }
 
@@ -204,14 +210,14 @@
 }
 
 .filter-tab:hover {
-  border-color: #2D9B8C;
-  color: #2D9B8C;
+  border-color: #479D90;
+  color: #479D90;
 }
 
 .filter-tab.active {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
-  border-color: #2D9B8C;
+  border-color: #479D90;
 }
 
 .documents-list {
@@ -262,7 +268,7 @@
 
 .doc-doctor {
   font-weight: 500;
-  color: #2D9B8C;
+  color: #479D90;
 }
 
 .doc-date {
@@ -282,11 +288,16 @@
 .action-btn {
   background: none;
   border: none;
-  font-size: 16px;
   cursor: pointer;
-  padding: 6px;
+  padding: 6px 8px;
   transition: all 0.2s ease;
   border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #479D90;
 }
 
 .action-btn:hover {
@@ -327,7 +338,7 @@
 }
 
 .upload-link {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border: none;
   border-radius: 8px;
@@ -339,7 +350,7 @@
 }
 
 .upload-link:hover {
-  background: #1e6f63;
+  background: #336B5E;
 }
 
 @media (max-width: 480px) {

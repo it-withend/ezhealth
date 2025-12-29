@@ -5,7 +5,7 @@ import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
 import Assistant from "./pages/Assistant";
 import HealthMetrics from "./pages/HealthMetrics";
-import AIChat from "./pages/AIChat";
+import Consultation from "./pages/Consultation";
 import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
 import Documents from "./pages/Documents";
@@ -50,10 +50,20 @@ function App() {
         />
 
         <Route
+          path="/consultation"
+          element={
+            <>
+              <Consultation />
+              <BottomNav />
+            </>
+          }
+        />
+
+        <Route
           path="/ai-chat"
           element={
             <>
-              <AIChat />
+              <Consultation />
               <BottomNav />
             </>
           }

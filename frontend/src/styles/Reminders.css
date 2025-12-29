@@ -4,6 +4,7 @@
   padding: 16px;
   padding-bottom: 100px;
   min-height: 100vh;
+  font-family: 'Montserrat', sans-serif;
 }
 
 .reminders-header {
@@ -18,11 +19,11 @@
   font-size: 24px;
   font-weight: 700;
   margin: 0;
-  color: #1a1a1a;
+  color: #000;
 }
 
 .add-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border: none;
   border-radius: 50%;
@@ -38,7 +39,7 @@
 }
 
 .add-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
   transform: scale(1.05);
 }
 
@@ -77,13 +78,13 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   font-size: 14px;
-  font-family: inherit;
+  font-family: 'Montserrat', inherit;
 }
 
 .form-group input:focus,
 .form-group select:focus {
-  border-color: #2D9B8C;
-  box-shadow: 0 0 0 3px rgba(45, 155, 140, 0.1);
+  border-color: #479D90;
+  box-shadow: 0 0 0 3px rgba(71, 157, 144, 0.1);
 }
 
 .form-row {
@@ -111,12 +112,12 @@
 }
 
 .save-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
 }
 
 .save-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
 }
 
 .cancel-btn {
@@ -171,7 +172,7 @@
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: #2D9B8C;
+  accent-color: #479D90;
   flex-shrink: 0;
 }
 
@@ -201,22 +202,26 @@
 
 .reminder-meta .time {
   font-weight: 500;
-  color: #2D9B8C;
+  color: #479D90;
 }
 
 .delete-btn {
   background: none;
   border: none;
   color: #e74c3c;
-  font-size: 16px;
   cursor: pointer;
   padding: 4px 8px;
   transition: all 0.2s ease;
-  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
 }
 
-.reminder-card:hover .delete-btn {
-  opacity: 1;
+.delete-btn:hover {
+  transform: scale(1.1);
+}
 }
 
 .delete-btn:hover {

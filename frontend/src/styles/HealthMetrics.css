@@ -39,7 +39,7 @@
 }
 
 .stat-card.active {
-  border-color: #2D9B8C;
+  border-color: #479D90;
   background: #f0faf9;
 }
 
@@ -86,7 +86,7 @@
 .chart-trend {
   font-size: 13px;
   font-weight: 600;
-  color: #2D9B8C;
+  color: #479D90;
   background: #f0faf9;
   padding: 4px 8px;
   border-radius: 6px;
@@ -124,7 +124,7 @@
 .info-value {
   font-size: 16px;
   font-weight: 700;
-  color: #2D9B8C;
+  color: #479D90;
 }
 
 .add-metric-card {
@@ -142,7 +142,7 @@
 }
 
 .add-metric-btn {
-  background: #2D9B8C;
+  background: #479D90;
   color: white;
   border: none;
   border-radius: 8px;
@@ -155,7 +155,7 @@
 }
 
 .add-metric-btn:hover {
-  background: #1e6f63;
+  background: #336B5E;
 }
 
 .add-metric-btn:active {

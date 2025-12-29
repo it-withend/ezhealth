@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { UploadIcon, DeleteIcon, ShareIcon, DownloadIcon } from "../ui/icons/icons";
 import "../styles/Documents.css";
 
 export default function Documents() {
@@ -56,6 +57,23 @@ export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showUploadForm, setShowUploadForm] = useState(false);
 
+  // Load documents from localStorage
+  useEffect(() => {
+    const savedDocuments = localStorage.getItem("documents");
+    if (savedDocuments) {
+      try {
+        setDocuments(JSON.parse(savedDocuments));
+      } catch (e) {
+        console.error("Failed to load documents");
+      }
+    }
+  }, []);
+
+  // Save documents to localStorage
+  useEffect(() => {
+    localStorage.setItem("documents", JSON.stringify(documents));
+  }, [documents]);
+
   const documentTypes = [
     { value: "all", label: "All Documents" },
     { value: "lab", label: "Lab Results" },
@@ -75,28 +93,28 @@ export default function Documents() {
   };
 
   const shareDocument = (doc) => {
-    alert(`Sharing "${doc.name}" with trusted contacts...`);
+    alert(`Обмен "${doc.name}" с доверенными контактами...`);
   };
 
   return (
     <div className="documents-container">
       <div className="documents-header">
-        <h1>Medical Documents</h1>
-        <button className="upload-btn" onClick={() => setShowUploadForm(!showUploadForm)}>
-          ⬆️ Upload
+        <h1>Медицинские документы</h1>
+        <button className="upload-btn" onClick={() => setShowUploadForm(!showUploadForm)} title="Загрузить документ">
+          <UploadIcon />
         </button>
       </div>
 
       {showUploadForm && (
         <Card className="upload-form-card">
-          <h3>Upload Medical Document</h3>
+          <h3>Загрузить медицинский документ</h3>
           <div className="upload-area">
             <div className="upload-icon">📄</div>
-            <p>Drag and drop your file or click to browse</p>
+            <p>Перетащите файл или нажмите для выбора</p>
             <input type="file" className="file-input" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
           </div>
           <div className="form-group">
-            <label>Document Type</label>
+            <label>Тип документа</label>
             <select className="select-input">
               <option>Lab Results</option>
               <option>Imaging (X-Ray, MRI, CT)</option>
@@ -106,8 +124,8 @@ export default function Documents() {
             </select>
           </div>
           <div className="form-actions">
-            <button className="submit-btn">Upload Document</button>
-            <button className="cancel-btn" onClick={() => setShowUploadForm(false)}>Cancel</button>
+            <button className="submit-btn">Загрузить документ</button>
+            <button className="cancel-btn" onClick={() => setShowUploadForm(false)}>Отмена</button>
           </div>
         </Card>
       )}
@@ -117,12 +135,11 @@ export default function Documents() {
         <div className="search-box">
           <input
             type="text"
-            placeholder="Search documents..."
+            placeholder="Поиск документов..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="search-input"
           />
-          <span className="search-icon">🔍</span>
         </div>
 
         <div className="filter-tabs">
@@ -148,9 +165,9 @@ export default function Documents() {
                 <div className="doc-name">{doc.name}</div>
                 <div className="doc-meta">
                   <span className="doc-doctor">👨‍⚕️ {doc.doctor}</span>
-                  <span className="doc-date">📅 {new Date(doc.date).toLocaleDateString()}</span>
+                  <span className="doc-date">📅 {new Date(doc.date).toLocaleDateString("ru-RU")}</span>
                 </div>
-                <div className="doc-size">Size: {doc.size}</div>
+                <div className="doc-size">Размер: {doc.size}</div>
               </div>
               <div className="doc-actions">
                 <button
@@ -158,21 +175,21 @@ export default function Documents() {
                   onClick={() => shareDocument(doc)}
                   title="Share document"
                 >
-                  👥
+                  <ShareIcon />
                 </button>
                 <button
                   className="action-btn download-btn"
                   onClick={() => alert("Downloading: " + doc.name)}
                   title="Download document"
                 >
-                  ⬇️
+                  <DownloadIcon />
                 </button>
                 <button
                   className="action-btn delete-btn"
                   onClick={() => deleteDocument(doc.id)}
                   title="Delete document"
                 >
-                  ✕
+                  <DeleteIcon />
                 </button>
               </div>
             </Card>
@@ -180,9 +197,9 @@ export default function Documents() {
         ) : (
           <div className="empty-state">
             <div className="empty-icon">📋</div>
-            <p>No documents found</p>
+            <p>Документы не найдены</p>
             <button className="upload-link" onClick={() => setShowUploadForm(true)}>
-              Upload your first document
+              Загрузить первый документ
             </button>
           </div>
         )}
