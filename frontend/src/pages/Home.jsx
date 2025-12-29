@@ -1,65 +1,171 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
-import { getHealthSummary } from "../api";
+import "../styles/Home.css";
 
 export default function Home() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [userName, setUserName] = useState("User");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    getHealthSummary()
-      .then(setData)
-      .catch(() => setError(true));
+    // Simulate loading user data
+    setTimeout(() => {
+      setUserName("Kathryn Murphy");
+      setData({
+        appointments: [
+          {
+            id: 1,
+            doctor: "Dr. Darius Kleine",
+            specialty: "Dental Specialist",
+            date: "Tomorrow (Thu, August 14)",
+            time: "9:00 - 9:30 AM"
+          },
+          {
+            id: 2,
+            doctor: "Dr. Courtney",
+            specialty: "General Practitioner",
+            date: "Fri, August 15",
+            time: "10:00 - 5:30 PM"
+          }
+        ],
+        nearby: [
+          {
+            id: 1,
+            name: "St. John Hospital",
+            address: "320 Parker Rd",
+            distance: "200 m"
+          },
+          {
+            id: 2,
+            name: "ABC Pharmacy",
+            address: "1234 Somewhere Dr",
+            distance: "350 m"
+          }
+        ],
+        alerts: [
+          {
+            id: 1,
+            text: "Latest COVID Updates",
+            subtitle: "Subscribe to get daily COVID updates"
+          }
+        ]
+      });
+      setLoading(false);
+    }, 500);
   }, []);
 
   if (error) {
-    return <p style={{ padding: 20 }}>Failed to load data</p>;
-  }
-
-  if (!data) {
-    return <p style={{ padding: 20 }}>Loading...</p>;
+    return <div className="home-error">Failed to load data</div>;
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h3>Welcome back 👋</h3>
+    <div className="home-container">
+      {/* Header Section */}
+      <div className="home-header">
+        <div className="welcome-section">
+          <div className="greeting">Welcome back,</div>
+          <h1 className="user-name">{userName}</h1>
+        </div>
+        <button className="notification-btn" onClick={() => navigate("/profile")}>
+          🔔
+        </button>
+      </div>
 
-      <input
-        placeholder="Find a doctor or specialty"
-        style={{
-          width: "100%",
-          padding: 12,
-          borderRadius: 12,
-          marginBottom: 20
-        }}
-      />
+      {/* Search Bar */}
+      <div className="search-container">
+        <input
+          type="text"
+          placeholder="Find a doctor or specialty"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="search-input"
+        />
+        <span className="search-icon">🔍</span>
+      </div>
 
-      <h4>Upcoming Appointments</h4>
-      {data.appointments.map(a => (
-        <Card
-          key={a.id}
-          onClick={() => navigate("/assistant")}
-          style={{ cursor: "pointer" }}
-        >
-          <b>{a.doctor}</b>
-          <br />
-          {a.specialty} • {a.date} • {a.time}
-        </Card>
-      ))}
+      {/* Upcoming Appointments Section */}
+      <div className="section">
+        <div className="section-header">
+          <h3>Upcoming Appointments</h3>
+          <a href="#" className="see-all-link" onClick={() => navigate("/health")}>
+            See All
+          </a>
+        </div>
+        {data?.appointments && data.appointments.length > 0 ? (
+          <div className="appointments-list">
+            {data.appointments.map(a => (
+              <Card
+                key={a.id}
+                onClick={() => navigate("/assistant")}
+                className="appointment-card"
+              >
+                <div className="appointment-header">
+                  <div className="appointment-icon">🦷</div>
+                  <div className="appointment-details">
+                    <div className="doctor-name">{a.doctor}</div>
+                    <div className="specialty">{a.specialty}</div>
+                  </div>
+                </div>
+                <div className="appointment-time">
+                  📅 {a.date}<br />
+                  ⏰ {a.time}
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p style={{ textAlign: "center", color: "#999" }}>No upcoming appointments</p>
+        )}
+      </div>
 
-      <h4 style={{ marginTop: 24 }}>Nearby</h4>
-      {data.nearby.map(n => (
-        <Card key={n.id}>
-          🏥 {n.name} • {n.distance}
-        </Card>
-      ))}
+      {/* Nearby Section */}
+      <div className="section">
+        <div className="section-header">
+          <h3>Nearby</h3>
+          <a href="#" className="see-all-link">See All</a>
+        </div>
+        {data?.nearby && data.nearby.length > 0 ? (
+          <div className="nearby-list">
+            {data.nearby.map(n => (
+              <Card key={n.id} className="nearby-card">
+                <div className="nearby-icon">🏥</div>
+                <div className="nearby-info">
+                  <div className="nearby-name">{n.name}</div>
+                  <div className="nearby-address">{n.address}</div>
+                </div>
+                <div className="nearby-distance">
+                  <div className="distance-value">{n.distance}</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
-      <h4 style={{ marginTop: 24 }}>Good to know</h4>
-      {data.alerts.map(a => (
-        <Card key={a.id}>{a.text}</Card>
-      ))}
+      {/* Good to Know Section */}
+      <div className="section" style={{ paddingBottom: 100 }}>
+        <div className="section-header">
+          <h3>Good to Know</h3>
+          <a href="#" className="see-all-link">See All</a>
+        </div>
+        {data?.alerts && data.alerts.length > 0 ? (
+          <div className="alerts-list">
+            {data.alerts.map(a => (
+              <Card key={a.id} className="alert-card">
+                <div className="alert-icon">📢</div>
+                <div className="alert-text">
+                  <div className="alert-title">{a.text}</div>
+                  <div className="alert-subtitle">{a.subtitle}</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

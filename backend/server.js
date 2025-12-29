@@ -10,14 +10,18 @@ import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/user.js";
 import healthRoutes from "./routes/health.js";
 import analysisRoutes from "./routes/analysis.js";
+import reminderRoutes from "./routes/reminders.js";
+import contactRoutes from "./routes/contacts.js";
+import aiRoutes from "./routes/ai.js";
+import alertRoutes from "./routes/alerts.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 /* middleware */
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 /* root */
 app.get("/", (req, res) => {
@@ -30,7 +34,11 @@ app.get("/", (req, res) => {
       auth: "/api/auth",
       user: "/api/user",
       health: "/api/health",
-      analysis: "/api/analysis"
+      analysis: "/api/analysis",
+      reminders: "/api/reminders",
+      contacts: "/api/contacts",
+      ai: "/api/ai",
+      alerts: "/api/alerts"
     }
   });
 });
@@ -40,6 +48,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/analysis", analysisRoutes);
+app.use("/api/reminders", reminderRoutes);
+app.use("/api/contacts", contactRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/alerts", alertRoutes);
 
 /* health check */
 app.get("/api/health-check", (req, res) => {
