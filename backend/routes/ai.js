@@ -5,7 +5,19 @@ import OpenAI from "openai";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
-const openai = new OpenAI();
+
+// Lazy initialization of OpenAI client
+let openai = null;
+
+function getOpenAIClient() {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY environment variable is not set");
+    }
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
 
 // Simple mock AI response (replace with actual OpenAI API)
 router.post("/analyze", async (req, res) => {
