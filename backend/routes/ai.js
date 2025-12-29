@@ -1,6 +1,11 @@
 import express from "express";
+import multer from "multer";
+import fs from "fs";
+import OpenAI from "openai";
 
 const router = express.Router();
+const upload = multer({ dest: "uploads/" });
+const openai = new OpenAI();
 
 // Simple mock AI response (replace with actual OpenAI API)
 router.post("/analyze", async (req, res) => {
@@ -78,7 +83,7 @@ Note: This is an AI-generated summary for reference only. Please consult with he
   }
 });
 
-export default router;/**
+/**
  * POST /ai/analyze
  * form-data: file
  */
@@ -126,4 +131,4 @@ router.post("/summary", async (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;
