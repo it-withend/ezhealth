@@ -140,32 +140,58 @@ router.post("/generate-report", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Missing messages" });
     }
 
-    // Generate a summary report
+    // Format conversation for AI
     const conversation = messages
-      .filter(m => m.sender === "user")
-      .map(m => `Patient: ${m.text}`)
+      .map(m => `${m.sender === "user" ? "Patient" : "AI Assistant"}: ${m.text}`)
       .join("\n");
 
-    const report = `
-MEDICAL CONSULTATION SUMMARY
-============================
-Date: ${new Date().toLocaleDateString()}
-Patient: ${userName || "Patient"}
+    try {
+      const openaiClient = getOpenAIClient();
+      const completion = await openaiClient.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a medical assistant creating a concise summary report for a doctor. 
+            Create a structured medical consultation summary in Russian language. 
+            Include: patient information, main complaints/symptoms, conversation summary, 
+            and recommendations. Keep it professional and concise.`
+          },
+          {
+            role: "user",
+            content: `Create a medical consultation summary for patient ${userName || "Patient"} based on this conversation:\n\n${conversation}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      });
 
-CONVERSATION SUMMARY:
+      const report = completion.choices[0].message.content;
+      res.json({ report });
+    } catch (openaiError) {
+      console.error("OpenAI API Error:", openaiError);
+      // Fallback to simple report
+      const simpleReport = `
+СВОДКА МЕДИЦИНСКОЙ КОНСУЛЬТАЦИИ
+============================
+Дата: ${new Date().toLocaleDateString('ru-RU')}
+Пациент: ${userName || "Пациент"}
+
+СВОДКА РАЗГОВОРА:
 ${conversation}
 
-RECOMMENDATIONS:
-- Regular health monitoring
-- Follow prescribed medications
-- Maintain healthy lifestyle
-- Schedule follow-up consultation
+РЕКОМЕНДАЦИИ:
+- Регулярный мониторинг здоровья
+- Следование предписанным лекарствам
+- Поддержание здорового образа жизни
+- Запись на повторную консультацию
 
-Note: This is an AI-generated summary for reference only. Please consult with healthcare professionals for proper diagnosis and treatment.
-    `;
-
-    res.json({ report });
+Примечание: Это AI-сгенерированная сводка только для справки. Пожалуйста, проконсультируйтесь с медицинскими специалистами для правильной диагностики и лечения.
+      `;
+      res.json({ report: simpleReport });
+    }
   } catch (error) {
+    console.error("Generate report error:", error);
     res.status(500).json({ error: error.message });
   }
 });

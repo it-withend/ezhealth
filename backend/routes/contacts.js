@@ -67,4 +67,51 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Share health data with trusted contacts
+router.post('/share', async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { dataType, dataId, contactIds } = req.body;
+
+    if (!dataType) {
+      return res.status(400).json({ error: 'dataType is required' });
+    }
+
+    // Get user's trusted contacts
+    const contacts = await dbAll(
+      `SELECT * FROM trusted_contacts WHERE user_id = ? AND can_view_health_data = 1`,
+      [userId]
+    );
+
+    if (contacts.length === 0) {
+      return res.status(404).json({ error: 'No trusted contacts with view permissions found' });
+    }
+
+    // Filter by contactIds if provided
+    const targetContacts = contactIds 
+      ? contacts.filter(c => contactIds.includes(c.id))
+      : contacts;
+
+    // In production, send data via Telegram Bot API
+    // For now, just log
+    console.log(`Sharing ${dataType} (ID: ${dataId}) with ${targetContacts.length} contacts`);
+    targetContacts.forEach(contact => {
+      console.log(`  - Contact: ${contact.contact_name || contact.contact_telegram_id}`);
+    });
+
+    res.json({
+      success: true,
+      sharedWith: targetContacts.length,
+      contacts: targetContacts.map(c => ({
+        id: c.id,
+        name: c.contact_name,
+        telegramId: c.contact_telegram_id
+      }))
+    });
+  } catch (error) {
+    console.error('Share error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

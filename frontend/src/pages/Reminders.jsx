@@ -1,103 +1,109 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { api } from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 import { AddIcon, DeleteIcon, CheckIcon } from "../ui/icons/icons";
 import "../styles/Reminders.css";
 
 export default function Reminders() {
   const navigate = useNavigate();
-  const [reminders, setReminders] = useState([
-    {
-      id: 1,
-      type: "medication",
-      title: "Aspirin",
-      time: "09:00 AM",
-      frequency: "Daily",
-      completed: false,
-      icon: "💊"
-    },
-    {
-      id: 2,
-      type: "water",
-      title: "Drink water",
-      time: "12:00 PM",
-      frequency: "Every 2 hours",
-      completed: true,
-      icon: "💧"
-    },
-    {
-      id: 3,
-      type: "vitamin",
-      title: "Vitamin D",
-      time: "08:00 AM",
-      frequency: "Daily",
-      completed: false,
-      icon: "🌅"
-    },
-    {
-      id: 4,
-      type: "walk",
-      title: "Morning walk",
-      time: "07:00 AM",
-      frequency: "Daily",
-      completed: true,
-      icon: "🚶"
-    }
-  ]);
+  const { user } = useContext(AuthContext);
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newReminder, setNewReminder] = useState({
     type: "medication",
     title: "",
     time: "09:00",
-    frequency: "Daily"
+    frequency: "Daily",
+    dosage: ""
   });
 
-  // Load reminders from localStorage
   useEffect(() => {
-    const savedReminders = localStorage.getItem("reminders");
-    if (savedReminders) {
-      try {
-        setReminders(JSON.parse(savedReminders));
-      } catch (e) {
-        console.error("Failed to load reminders");
-      }
+    if (user) {
+      loadReminders();
     }
-  }, []);
+  }, [user]);
 
-  // Save reminders to localStorage
-  useEffect(() => {
-    localStorage.setItem("reminders", JSON.stringify(reminders));
-  }, [reminders]);
-
-  const toggleReminder = (id) => {
-    setReminders(prev =>
-      prev.map(r => r.id === id ? { ...r, completed: !r.completed } : r)
-    );
+  const loadReminders = async () => {
+    if (!user) return;
+    try {
+      const response = await api.get("/reminders");
+      setReminders(response.data || []);
+    } catch (error) {
+      console.error("Error loading reminders:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const addReminder = () => {
-    if (newReminder.title) {
-      setReminders(prev => [...prev, {
-        id: Math.max(...prev.map(r => r.id), 0) + 1,
-        ...newReminder,
-        completed: false,
-        icon: newReminder.type === "medication" ? "💊" : newReminder.type === "water" ? "💧" : newReminder.type === "vitamin" ? "🌅" : "🚶"
-      }]);
-      setNewReminder({ type: "medication", title: "", time: "09:00", frequency: "Daily" });
+  const toggleReminder = async (reminder) => {
+    try {
+      await api.post("/reminders/log", {
+        medicationId: reminder.type === "medication" ? reminder.id : undefined,
+        habitId: reminder.type !== "medication" ? reminder.id : undefined
+      });
+      loadReminders(); // Reload to get updated state
+    } catch (error) {
+      console.error("Error logging reminder:", error);
+      alert("Ошибка при отметке напоминания");
+    }
+  };
+
+  const addReminder = async () => {
+    if (!newReminder.title) {
+      alert("Пожалуйста, введите название");
+      return;
+    }
+
+    try {
+      await api.post("/reminders", {
+        type: newReminder.type,
+        name: newReminder.title,
+        reminderTime: newReminder.time,
+        frequency: newReminder.frequency,
+        dosage: newReminder.dosage || undefined
+      });
+      setNewReminder({ type: "medication", title: "", time: "09:00", frequency: "Daily", dosage: "" });
       setShowAddForm(false);
+      loadReminders();
+    } catch (error) {
+      console.error("Error adding reminder:", error);
+      alert("Ошибка при добавлении напоминания");
     }
   };
 
-  const deleteReminder = (id) => {
-    setReminders(prev => prev.filter(r => r.id !== id));
+  const deleteReminder = async (id, type) => {
+    if (!window.confirm("Удалить это напоминание?")) return;
+    
+    try {
+      await api.delete(`/reminders/${id}?type=${type}`);
+      loadReminders();
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
+      alert("Ошибка при удалении напоминания");
+    }
   };
 
   const types = [
     { value: "medication", label: "💊 Medication" },
     { value: "water", label: "💧 Drink Water" },
     { value: "vitamin", label: "🌅 Vitamin" },
-    { value: "walk", label: "🚶 Physical Activity" }
+    { value: "walk", label: "🚶 Physical Activity" },
+    { value: "other", label: "✅ Other Habit" }
   ];
+
+  const getReminderIcon = (type) => {
+    const icons = {
+      medication: "💊",
+      water: "💧",
+      vitamin: "🌅",
+      walk: "🚶",
+      other: "✅"
+    };
+    return icons[type] || "✅";
+  };
 
   return (
     <div className="reminders-container">
@@ -121,14 +127,26 @@ export default function Reminders() {
             </select>
           </div>
           <div className="form-group">
-            <label>Название</label>
+            <label>Название *</label>
             <input
               type="text"
               placeholder="e.g., Aspirin"
               value={newReminder.title}
               onChange={e => setNewReminder({ ...newReminder, title: e.target.value })}
+              required
             />
           </div>
+          {newReminder.type === "medication" && (
+            <div className="form-group">
+              <label>Дозировка</label>
+              <input
+                type="text"
+                placeholder="e.g., 500mg"
+                value={newReminder.dosage}
+                onChange={e => setNewReminder({ ...newReminder, dosage: e.target.value })}
+              />
+            </div>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label>Время</label>
@@ -144,10 +162,10 @@ export default function Reminders() {
                 value={newReminder.frequency}
                 onChange={e => setNewReminder({ ...newReminder, frequency: e.target.value })}
               >
-                <option>Ежедневно</option>
-                <option>Каждые 2 часа</option>
-                <option>Каждые 4 часа</option>
-                <option>Еженедельно</option>
+                <option value="Daily">Ежедневно</option>
+                <option value="Every 2 hours">Каждые 2 часа</option>
+                <option value="Every 4 hours">Каждые 4 часа</option>
+                <option value="Weekly">Еженедельно</option>
               </select>
             </div>
           </div>
@@ -158,38 +176,48 @@ export default function Reminders() {
         </div>
       )}
 
-      <div className="reminders-list">
-        {reminders.length > 0 ? (
-          reminders.map(reminder => (
-            <Card key={reminder.id} className={`reminder-card ${reminder.completed ? "completed" : ""}`}>
-              <div className="reminder-content">
-                <input
-                  type="checkbox"
-                  checked={reminder.completed}
-                  onChange={() => toggleReminder(reminder.id)}
-                  className="reminder-checkbox"
-                />
-                <div className="reminder-icon">{reminder.icon}</div>
-                <div className="reminder-details">
-                  <div className="reminder-title">{reminder.title}</div>
-                  <div className="reminder-meta">
-                    <span className="time">⏰ {reminder.time}</span>
-                    <span className="frequency">{reminder.frequency}</span>
+      {loading ? (
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Загрузка напоминаний...</p>
+        </div>
+      ) : (
+        <div className="reminders-list">
+          {reminders.length > 0 ? (
+            reminders.map(reminder => (
+              <Card key={reminder.id} className="reminder-card">
+                <div className="reminder-content">
+                  <button
+                    className="reminder-checkbox-btn"
+                    onClick={() => toggleReminder(reminder)}
+                    title="Mark as completed"
+                  >
+                    ✓
+                  </button>
+                  <div className="reminder-icon">{getReminderIcon(reminder.type)}</div>
+                  <div className="reminder-details">
+                    <div className="reminder-title">{reminder.title}</div>
+                    <div className="reminder-meta">
+                      {reminder.time && <span className="time">⏰ {reminder.time}</span>}
+                      {reminder.frequency && <span className="frequency">{reminder.frequency}</span>}
+                      {reminder.dosage && <span className="dosage">💊 {reminder.dosage}</span>}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <button
-                className="delete-btn"
-                onClick={() => deleteReminder(reminder.id)}
-                title="Delete reminder"
-              >
-                <DeleteIcon />
-              </button>
-            </Card>
-          ))
-        ) : (
-          <p className="empty-state">Пока нет напоминаний. Добавьте первое!</p>        )}
-      </div>
+                <button
+                  className="delete-btn"
+                  onClick={() => deleteReminder(reminder.id, reminder.type)}
+                  title="Delete reminder"
+                >
+                  <DeleteIcon />
+                </button>
+              </Card>
+            ))
+          ) : (
+            <p className="empty-state">Пока нет напоминаний. Добавьте первое!</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

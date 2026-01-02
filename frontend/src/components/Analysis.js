@@ -16,7 +16,9 @@ function Analysis() {
     type: '',
     notes: '',
     date: format(new Date(), 'yyyy-MM-dd'),
+    file: null
   });
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadAnalyses();
@@ -42,20 +44,51 @@ function Analysis() {
     }
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, file, title: formData.title || file.name });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title || !formData.date) return;
 
+    setUploading(true);
     try {
-      // user_id is now optional - middleware will get it from auth
-      await api.post('/analysis', {
-        ...formData,
-      });
+      if (formData.file) {
+        // Upload with file
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', formData.file);
+        uploadFormData.append('title', formData.title);
+        uploadFormData.append('type', formData.type);
+        uploadFormData.append('date', formData.date);
+        if (formData.notes) {
+          uploadFormData.append('notes', formData.notes);
+        }
+
+        await api.post('/analysis', uploadFormData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      } else {
+        // Upload without file
+        await api.post('/analysis', {
+          title: formData.title,
+          type: formData.type,
+          date: formData.date,
+          notes: formData.notes
+        });
+      }
+
       setFormData({
         title: '',
         type: '',
         notes: '',
         date: format(new Date(), 'yyyy-MM-dd'),
+        file: null
       });
       setShowForm(false);
       loadAnalyses();
@@ -66,6 +99,8 @@ function Analysis() {
       if (error.response?.status === 401) {
         alert('Ошибка авторизации. Пожалуйста, войдите снова.');
       }
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -143,6 +178,20 @@ function Analysis() {
             </div>
 
             <div className="input-group">
+              <label>Файл (необязательно)</label>
+              <input
+                type="file"
+                onChange={handleFileSelect}
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              />
+              {formData.file && (
+                <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  Выбран: {formData.file.name}
+                </p>
+              )}
+            </div>
+
+            <div className="input-group">
               <label>Заметки</label>
               <textarea
                 value={formData.notes}
@@ -151,8 +200,8 @@ function Analysis() {
               />
             </div>
 
-            <button type="submit" className="btn btn-primary">
-              Сохранить
+            <button type="submit" className="btn btn-primary" disabled={uploading}>
+              {uploading ? 'Загрузка...' : 'Сохранить'}
             </button>
           </form>
         )}
@@ -181,6 +230,18 @@ function Analysis() {
                 )}
                 {analysis.notes && (
                   <div className="analysis-notes">{analysis.notes}</div>
+                )}
+                {analysis.file_path && (
+                  <div className="analysis-file">
+                    <a 
+                      href={`${process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}${analysis.file_path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#479D90', textDecoration: 'underline' }}
+                    >
+                      📄 Открыть файл
+                    </a>
+                  </div>
                 )}
                 <div className="list-item-date">
                   {format(new Date(analysis.date), 'dd MMMM yyyy', { locale: ru })}

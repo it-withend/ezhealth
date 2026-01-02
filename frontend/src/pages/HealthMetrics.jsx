@@ -1,58 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 import Card from "../ui/components/Card";
+import { api } from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 import "../styles/HealthMetrics.css";
-
-const data = {
-  pulse: [
-    { date: "Mon", value: 72 },
-    { date: "Tue", value: 75 },
-    { date: "Wed", value: 70 },
-    { date: "Thu", value: 78 },
-    { date: "Fri", value: 75 },
-    { date: "Sat", value: 73 },
-    { date: "Sun", value: 71 }
-  ],
-  sleep: [
-    { date: "Mon", value: 7.5 },
-    { date: "Tue", value: 6.8 },
-    { date: "Wed", value: 8.2 },
-    { date: "Thu", value: 7.0 },
-    { date: "Fri", value: 6.5 },
-    { date: "Sat", value: 9.0 },
-    { date: "Sun", value: 8.5 }
-  ],
-  weight: [
-    { date: "Week 1", value: 72.5 },
-    { date: "Week 2", value: 72.3 },
-    { date: "Week 3", value: 72.0 },
-    { date: "Week 4", value: 71.8 }
-  ],
-  bloodPressure: [
-    { date: "Mon", systolic: 120, diastolic: 80 },
-    { date: "Tue", systolic: 122, diastolic: 82 },
-    { date: "Wed", systolic: 118, diastolic: 78 },
-    { date: "Thu", systolic: 125, diastolic: 83 },
-    { date: "Fri", systolic: 121, diastolic: 80 }
-  ]
-};
 
 export default function HealthMetrics() {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
   const [selectedMetric, setSelectedMetric] = useState("pulse");
+  const [chartData, setChartData] = useState([]);
   const [metrics, setMetrics] = useState([
     {
       id: "pulse",
       name: "Pulse",
       icon: "❤️",
       unit: "bpm",
-      current: 75,
+      current: 0,
       normal: "60-100",
-      trend: "↑ 3%",
+      trend: "",
       color: "#e74c3c"
     },
     {
@@ -60,9 +30,9 @@ export default function HealthMetrics() {
       name: "Sleep",
       icon: "😴",
       unit: "hours",
-      current: 7.8,
+      current: 0,
       normal: "7-9",
-      trend: "↑ 5%",
+      trend: "",
       color: "#3498db"
     },
     {
@@ -70,36 +40,180 @@ export default function HealthMetrics() {
       name: "Weight",
       icon: "⚖️",
       unit: "kg",
-      current: 71.8,
+      current: 0,
       normal: "65-75",
-      trend: "↓ 0.7%",
+      trend: "",
       color: "#f39c12"
     },
     {
-      id: "bloodPressure",
+      id: "pressure",
       name: "Blood Pressure",
       icon: "📊",
       unit: "mmHg",
-      current: "121/80",
+      current: "-",
       normal: "< 120/80",
-      trend: "→ Stable",
+      trend: "",
+      color: "#9b59b6"
+    },
+    {
+      id: "sugar",
+      name: "Blood Sugar",
+      icon: "🍬",
+      unit: "mmol/L",
+      current: 0,
+      normal: "4-6",
+      trend: "",
       color: "#9b59b6"
     }
   ]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState({
+    type: "pulse",
+    value: "",
+    unit: "",
+    notes: ""
+  });
+
+  useEffect(() => {
+    if (user) {
+      loadMetrics();
+      loadChartData();
+    }
+  }, [user, selectedMetric]);
+
+  const loadMetrics = async () => {
+    if (!user) return;
+    try {
+      const response = await api.get("/health/metrics", {
+        params: { limit: 1, days: 1 }
+      });
+      
+      const allMetrics = response.data.metrics || [];
+      
+      // Get latest values for each metric type
+      const latestValues = {};
+      allMetrics.forEach(m => {
+        if (!latestValues[m.type] || new Date(m.recorded_at) > new Date(latestValues[m.type].recorded_at)) {
+          latestValues[m.type] = m;
+        }
+      });
+
+      // Update metrics with latest values
+      setMetrics(prev => prev.map(m => {
+        const latest = latestValues[m.id];
+        if (latest) {
+          let current = latest.value;
+          if (m.id === "pressure" && latestValues.systolic && latestValues.diastolic) {
+            current = `${latestValues.systolic.value}/${latestValues.diastolic.value}`;
+          }
+          return { ...m, current };
+        }
+        return m;
+      }));
+    } catch (error) {
+      console.error("Error loading metrics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadChartData = async () => {
+    if (!user) return;
+    try {
+      const response = await api.get("/health/metrics/stats", {
+        params: { type: selectedMetric, days: 30 }
+      });
+      
+      const data = response.data.data || [];
+      
+      // Format data for charts
+      if (selectedMetric === "pressure") {
+        // For pressure, we need to combine systolic and diastolic
+        try {
+          const systolicResponse = await api.get("/health/metrics/stats", {
+            params: { type: "systolic", days: 30 }
+          });
+          const diastolicResponse = await api.get("/health/metrics/stats", {
+            params: { type: "diastolic", days: 30 }
+          });
+          
+          const systolicData = systolicResponse.data.data || [];
+          const diastolicData = diastolicResponse.data.data || [];
+          
+          // Combine by date
+          const combinedMap = new Map();
+          
+          systolicData.forEach(item => {
+            const date = item.date || item.fullDate;
+            if (!combinedMap.has(date)) {
+              combinedMap.set(date, { date, systolic: item.value, diastolic: null });
+            } else {
+              combinedMap.get(date).systolic = item.value;
+            }
+          });
+          
+          diastolicData.forEach(item => {
+            const date = item.date || item.fullDate;
+            if (!combinedMap.has(date)) {
+              combinedMap.set(date, { date, systolic: null, diastolic: item.value });
+            } else {
+              combinedMap.get(date).diastolic = item.value;
+            }
+          });
+          
+          const combined = Array.from(combinedMap.values()).sort((a, b) => 
+            new Date(a.date) - new Date(b.date)
+          );
+          setChartData(combined);
+        } catch (error) {
+          console.error("Error loading pressure data:", error);
+          setChartData([]);
+        }
+      } else {
+        setChartData(data);
+      }
+    } catch (error) {
+      console.error("Error loading chart data:", error);
+      setChartData([]);
+    }
+  };
+
+  const handleAddMetric = async (e) => {
+    e.preventDefault();
+    if (!formData.value) return;
+
+    try {
+      await api.post("/health/metrics", {
+        type: formData.type,
+        value: parseFloat(formData.value),
+        unit: formData.unit || getDefaultUnit(formData.type),
+        notes: formData.notes
+      });
+      
+      setFormData({ type: "pulse", value: "", unit: "", notes: "" });
+      setShowAddForm(false);
+      loadMetrics();
+      loadChartData();
+    } catch (error) {
+      console.error("Error adding metric:", error);
+      alert("Ошибка при добавлении показателя");
+    }
+  };
+
+  const getDefaultUnit = (type) => {
+    const units = {
+      pulse: "bpm",
+      sleep: "hours",
+      weight: "kg",
+      pressure: "mmHg",
+      sugar: "mmol/L"
+    };
+    return units[type] || "";
+  };
 
   const getChartData = () => {
-    switch (selectedMetric) {
-      case "pulse":
-        return data.pulse;
-      case "sleep":
-        return data.sleep;
-      case "weight":
-        return data.weight;
-      case "bloodPressure":
-        return data.bloodPressure;
-      default:
-        return [];
-    }
+    return chartData;
   };
 
   const getMetricColor = () => {
@@ -138,73 +252,12 @@ export default function HealthMetrics() {
         </div>
 
         <div className="chart-container">
-          {selectedMetric === "pulse" && (
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={getChartData()}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
-                <XAxis dataKey="date" stroke="#999" />
-                <YAxis stroke="#999" />
-                <Tooltip
-                  contentStyle={{
-                    background: "white",
-                    border: `1px solid ${getMetricColor()}`,
-                    borderRadius: 8
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke={getMetricColor()}
-                  dot={{ fill: getMetricColor(), r: 4 }}
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-
-          {selectedMetric === "sleep" && (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={getChartData()}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
-                <XAxis dataKey="date" stroke="#999" />
-                <YAxis stroke="#999" />
-                <Tooltip
-                  contentStyle={{
-                    background: "white",
-                    border: `1px solid ${getMetricColor()}`,
-                    borderRadius: 8
-                  }}
-                />
-                <Bar dataKey="value" fill={getMetricColor()} radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-
-          {selectedMetric === "weight" && (
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={getChartData()}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
-                <XAxis dataKey="date" stroke="#999" />
-                <YAxis stroke="#999" domain={[70, 74]} />
-                <Tooltip
-                  contentStyle={{
-                    background: "white",
-                    border: `1px solid ${getMetricColor()}`,
-                    borderRadius: 8
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke={getMetricColor()}
-                  dot={{ fill: getMetricColor(), r: 4 }}
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-
-          {selectedMetric === "bloodPressure" && (
+          {chartData.length === 0 ? (
+            <div className="no-data">
+              <p>Нет данных для отображения</p>
+              <p className="hint">Добавьте показатели, чтобы увидеть график</p>
+            </div>
+          ) : selectedMetric === "pressure" ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={getChartData()}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
@@ -224,12 +277,52 @@ export default function HealthMetrics() {
                   stroke="#e74c3c"
                   dot={{ fill: "#e74c3c", r: 4 }}
                   strokeWidth={2}
+                  name="Systolic"
                 />
                 <Line
                   type="monotone"
                   dataKey="diastolic"
                   stroke="#3498db"
                   dot={{ fill: "#3498db", r: 4 }}
+                  strokeWidth={2}
+                  name="Diastolic"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : selectedMetric === "sleep" ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={getChartData()}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
+                <XAxis dataKey="date" stroke="#999" />
+                <YAxis stroke="#999" />
+                <Tooltip
+                  contentStyle={{
+                    background: "white",
+                    border: `1px solid ${getMetricColor()}`,
+                    borderRadius: 8
+                  }}
+                />
+                <Bar dataKey="value" fill={getMetricColor()} radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={getChartData()}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
+                <XAxis dataKey="date" stroke="#999" />
+                <YAxis stroke="#999" />
+                <Tooltip
+                  contentStyle={{
+                    background: "white",
+                    border: `1px solid ${getMetricColor()}`,
+                    borderRadius: 8
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke={getMetricColor()}
+                  dot={{ fill: getMetricColor(), r: 4 }}
                   strokeWidth={2}
                 />
               </LineChart>
@@ -255,10 +348,60 @@ export default function HealthMetrics() {
 
       {/* Add New Metric */}
       <Card className="add-metric-card">
-        <h3>Record New Metric</h3>
-        <button className="add-metric-btn" onClick={() => navigate("/record-metric")}>
-          + Add Manual Entry
-        </button>
+        <div className="add-metric-header">
+          <h3>Record New Metric</h3>
+          <button className="add-metric-btn" onClick={() => setShowAddForm(!showAddForm)}>
+            {showAddForm ? "Cancel" : "+ Add Manual Entry"}
+          </button>
+        </div>
+        
+        {showAddForm && (
+          <form onSubmit={handleAddMetric} className="metric-form">
+            <div className="form-group">
+              <label>Type</label>
+              <select
+                value={formData.type}
+                onChange={e => setFormData({ ...formData, type: e.target.value, unit: getDefaultUnit(e.target.value) })}
+              >
+                <option value="pulse">Pulse</option>
+                <option value="sleep">Sleep</option>
+                <option value="weight">Weight</option>
+                <option value="systolic">Blood Pressure (Systolic)</option>
+                <option value="diastolic">Blood Pressure (Diastolic)</option>
+                <option value="sugar">Blood Sugar</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Value</label>
+              <input
+                type="number"
+                step="0.1"
+                value={formData.value}
+                onChange={e => setFormData({ ...formData, value: e.target.value })}
+                placeholder="Enter value"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Unit</label>
+              <input
+                type="text"
+                value={formData.unit}
+                onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                placeholder={getDefaultUnit(formData.type)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Notes (optional)</label>
+              <textarea
+                value={formData.notes}
+                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes..."
+              />
+            </div>
+            <button type="submit" className="submit-btn">Save Metric</button>
+          </form>
+        )}
       </Card>
     </div>
   );

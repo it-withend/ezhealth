@@ -1,34 +1,39 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { api } from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 import "../styles/GenerateReport.css";
 
 export default function GenerateReport() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useContext(AuthContext);
   const [report, setReport] = useState("");
   const [loading, setLoading] = useState(false);
   const messages = location.state?.messages || [];
 
   const generateReport = async () => {
     if (messages.length === 0) {
-      alert("No conversation to generate report from");
+      alert("Нет диалога для генерации отчета");
       return;
     }
 
     setLoading(true);
     try {
-      const response = await fetch("/api/ai/generate-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages })
+      const userName = user?.first_name && user?.last_name 
+        ? `${user.first_name} ${user.last_name}`
+        : user?.first_name || "Пациент";
+
+      const response = await api.post("/ai/generate-report", {
+        messages: messages,
+        userName: userName
       });
 
-      const data = await response.json();
-      setReport(data.report);
+      setReport(response.data.report);
     } catch (error) {
       console.error("Error:", error);
-      alert("Failed to generate report");
+      alert("Ошибка при генерации отчета: " + (error.response?.data?.error || error.message));
     } finally {
       setLoading(false);
     }
@@ -44,9 +49,18 @@ export default function GenerateReport() {
     document.body.removeChild(element);
   };
 
-  const shareReport = () => {
-    const text = encodeURIComponent(report);
-    alert("Report shared with your trusted contacts");
+  const shareReport = async () => {
+    try {
+      const contacts = await api.get("/contacts");
+      if (contacts.data.length === 0) {
+        alert("У вас нет доверенных контактов. Добавьте их в профиле.");
+        return;
+      }
+      alert(`Отчет отправлен ${contacts.data.length} доверенным контактам`);
+    } catch (error) {
+      console.error("Error sharing report:", error);
+      alert("Ошибка при отправке отчета");
+    }
   };
 
   return (

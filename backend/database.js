@@ -149,23 +149,68 @@ export function initDatabase() {
                     return;
                   }
 
-                  // Create indexes
-                  database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
+                  // Habits table (for water, vitamins, walks, etc.)
+                  database.run(`
+                    CREATE TABLE IF NOT EXISTS habits (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER NOT NULL,
+                      type TEXT NOT NULL,
+                      name TEXT NOT NULL,
+                      reminder_time TEXT,
+                      frequency TEXT,
+                      is_active BOOLEAN DEFAULT 1,
+                      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                  `, (err) => {
                     if (err) {
-                      console.error('Error creating index:', err);
+                      console.error('Error creating habits table:', err);
                       reject(err);
                       return;
                     }
 
-                    database.run(`CREATE INDEX IF NOT EXISTS idx_analyses_user_date ON medical_analyses(user_id, date)`, (err) => {
+                    // Habit logs table
+                    database.run(`
+                      CREATE TABLE IF NOT EXISTS habit_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        habit_id INTEGER NOT NULL,
+                        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+                      )
+                    `, (err) => {
                       if (err) {
-                        console.error('Error creating index:', err);
+                        console.error('Error creating habit_logs table:', err);
                         reject(err);
                         return;
                       }
 
-                      console.log('Database initialized');
-                      resolve();
+                      // Create indexes
+                      database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
+                        if (err) {
+                          console.error('Error creating index:', err);
+                          reject(err);
+                          return;
+                        }
+
+                        database.run(`CREATE INDEX IF NOT EXISTS idx_analyses_user_date ON medical_analyses(user_id, date)`, (err) => {
+                          if (err) {
+                            console.error('Error creating index:', err);
+                            reject(err);
+                            return;
+                          }
+
+                          database.run(`CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id, is_active)`, (err) => {
+                            if (err) {
+                              console.error('Error creating index:', err);
+                              reject(err);
+                              return;
+                            }
+
+                            console.log('Database initialized');
+                            resolve();
+                          });
+                        });
+                      });
                     });
                   });
                 });

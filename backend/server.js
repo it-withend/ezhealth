@@ -4,6 +4,8 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { initDatabase } from "./database.js";
 import authRoutes from "./routes/auth.js";
@@ -15,6 +17,9 @@ import contactRoutes from "./routes/contacts.js";
 import aiRoutes from "./routes/ai.js";
 import alertRoutes from "./routes/alerts.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -22,6 +27,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 /* root */
 app.get("/", (req, res) => {

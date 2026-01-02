@@ -72,15 +72,48 @@ export default function AIChat() {
     }
   };
 
-  const handleFileUpload = () => {
-    // Implementation for file upload
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
     const userMessage = {
       id: messages.length + 1,
-      text: "📄 Medical document uploaded",
+      text: `📄 Загружен документ: ${file.name}`,
       sender: "user",
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMessage]);
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await api.post("/ai/analyze-file", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      const botMessage = {
+        id: messages.length + 2,
+        text: response.data.analysis || "Документ проанализирован",
+        sender: "bot",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error("File upload error:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Ошибка при анализе файла";
+      const botMessage = {
+        id: messages.length + 2,
+        text: `Ошибка: ${errorMessage}`,
+        sender: "bot",
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGenerateReport = () => {
@@ -124,8 +157,34 @@ export default function AIChat() {
         <div className="upload-options">
           {showUploadOptions && (
             <div className="upload-menu">
-              <button onClick={handleFileUpload}>📷 Upload Photo</button>
-              <button onClick={handleFileUpload}>📄 Upload Document</button>
+              <label style={{ cursor: 'pointer', display: 'block', padding: '8px' }}>
+                📷 Upload Photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                      setShowUploadOptions(false);
+                    }
+                  }}
+                />
+              </label>
+              <label style={{ cursor: 'pointer', display: 'block', padding: '8px' }}>
+                📄 Upload Document
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                      setShowUploadOptions(false);
+                    }
+                  }}
+                />
+              </label>
               <button onClick={() => setShowUploadOptions(false)}>Cancel</button>
             </div>
           )}

@@ -1,15 +1,17 @@
 import express from "express";
 import { dbRun, dbGet, dbAll } from '../database.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Check health metrics and send alerts if needed
-router.post("/check", async (req, res) => {
+router.post("/check", authenticate, async (req, res) => {
   try {
-    const { userId, metricType, value } = req.body;
+    const userId = req.userId; // From authentication middleware
+    const { metricType, value } = req.body;
 
-    if (!userId || !metricType || value === undefined) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!metricType || value === undefined) {
+      return res.status(400).json({ error: "metricType and value are required" });
     }
 
     // Define normal ranges
@@ -68,31 +70,51 @@ router.post("/check", async (req, res) => {
 });
 
 // Get alerts for user
-router.get("/", async (req, res) => {
+router.get("/", authenticate, async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ error: "Missing userId" });
+    const userId = req.userId;
 
-    // Mock alerts (in production, store in database)
-    const alerts = [
-      {
-        id: 1,
-        type: "high_pulse",
-        message: "Your pulse is unusually high (95 bpm)",
-        severity: "warning",
-        timestamp: new Date(Date.now() - 3600000)
-      },
-      {
-        id: 2,
-        type: "low_sleep",
-        message: "You slept less than recommended (6 hours)",
-        severity: "info",
-        timestamp: new Date(Date.now() - 86400000)
+    // Get recent critical metrics
+    const recentMetrics = await dbAll(
+      `SELECT * FROM health_metrics 
+       WHERE user_id = ? 
+       AND recorded_at >= datetime("now", "-7 days")
+       ORDER BY recorded_at DESC
+       LIMIT 50`,
+      [userId]
+    );
+
+    // Check for critical values
+    const alerts = [];
+    const normalRanges = {
+      pulse: { min: 60, max: 100 },
+      systolic: { min: 90, max: 120 },
+      diastolic: { min: 60, max: 80 },
+      sleep: { min: 6, max: 9 },
+      sugar: { min: 4, max: 6 }
+    };
+
+    recentMetrics.forEach(metric => {
+      const range = normalRanges[metric.type];
+      if (range) {
+        const value = parseFloat(metric.value);
+        if (value < range.min || value > range.max) {
+          const alertType = value > range.max ? "high" : "low";
+          alerts.push({
+            id: metric.id,
+            type: `${alertType}_${metric.type}`,
+            message: `Ваш ${metric.type === 'pulse' ? 'пульс' : metric.type === 'sleep' ? 'сон' : metric.type} ${alertType === 'high' ? 'высокий' : 'низкий'}: ${value}${metric.unit ? ' ' + metric.unit : ''}`,
+            severity: value > range.max * 1.2 || value < range.min * 0.8 ? "critical" : "warning",
+            timestamp: metric.recorded_at,
+            metricId: metric.id
+          });
+        }
       }
-    ];
+    });
 
     res.json(alerts);
   } catch (error) {
+    console.error("Get alerts error:", error);
     res.status(500).json({ error: error.message });
   }
 });
