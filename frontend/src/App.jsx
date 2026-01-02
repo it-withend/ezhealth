@@ -12,11 +12,37 @@ import Documents from "./pages/Documents";
 import GenerateReport from "./pages/GenerateReport";
 
 import BottomNav from "./ui/components/BottomNav";
+import { AuthProvider } from "./context/AuthContext";
+
+// #region agent log
+const logAppEvent = (event, data) => {
+  fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      location: 'App.jsx',
+      message: event,
+      data: data,
+      timestamp: Date.now(),
+      sessionId: 'debug-session',
+      runId: 'run1',
+      hypothesisId: 'A'
+    })
+  }).catch(() => {});
+};
+// #endregion
 
 function App() {
+  // #region agent log
+  React.useEffect(() => {
+    logAppEvent('App mounted', { path: window.location.pathname });
+  }, []);
+  // #endregion
+
   return (
-    <BrowserRouter>
-      <Routes>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path="/" element={<Onboarding />} />
 
         <Route
@@ -108,8 +134,9 @@ function App() {
             </>
           }
         />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

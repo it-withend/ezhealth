@@ -76,6 +76,22 @@ export default function HealthMetrics() {
   });
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect',
+        message: 'useEffect triggered',
+        data: { hasUser: !!user, userId: user?.id, selectedMetric },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C'
+      })
+    }).catch(() => {});
+    // #endregion
+
     if (user) {
       loadMetrics();
       loadChartData();
@@ -84,10 +100,42 @@ export default function HealthMetrics() {
 
   const loadMetrics = async () => {
     if (!user) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:loadMetrics',
+        message: 'loadMetrics called',
+        data: { userId: user?.id },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C'
+      })
+    }).catch(() => {});
+    // #endregion
+
     try {
       const response = await api.get("/health/metrics", {
         params: { limit: 1, days: 1 }
       });
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadMetrics',
+          message: 'loadMetrics response',
+          data: { metricsCount: response.data?.metrics?.length || 0, success: response.data?.success },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'C'
+        })
+      }).catch(() => {});
+      // #endregion
       
       const allMetrics = response.data.metrics || [];
       
@@ -112,6 +160,21 @@ export default function HealthMetrics() {
         return m;
       }));
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadMetrics',
+          message: 'loadMetrics error',
+          data: { error: error.message, status: error.response?.status, responseData: error.response?.data },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'C'
+        })
+      }).catch(() => {});
+      // #endregion
       console.error("Error loading metrics:", error);
     } finally {
       setLoading(false);

@@ -10,11 +10,43 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'AuthContext.js:initAuth',
+          message: 'initAuth started',
+          data: { hasTelegram: !!window.Telegram?.WebApp },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'D'
+        })
+      }).catch(() => {});
+      // #endregion
+
       try {
         // 1️⃣ Пытаемся восстановить пользователя
         const savedUser = localStorage.getItem("user");
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'AuthContext.js:initAuth',
+              message: 'User restored from localStorage',
+              data: { userId: parsedUser?.id },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'D'
+            })
+          }).catch(() => {});
+          // #endregion
           setLoading(false);
           setInitialized(true);
           return;
@@ -22,6 +54,21 @@ export const AuthProvider = ({ children }) => {
 
         // 2️⃣ Только Telegram Mini App
         if (!window.Telegram?.WebApp) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'AuthContext.js:initAuth',
+              message: 'Not in Telegram Mini App',
+              data: {},
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'D'
+            })
+          }).catch(() => {});
+          // #endregion
           console.warn("Not in Telegram Mini App");
           setLoading(false);
           setInitialized(true);
@@ -33,6 +80,21 @@ export const AuthProvider = ({ children }) => {
 
         const tgUser = tg.initDataUnsafe?.user;
         if (!tgUser) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'AuthContext.js:initAuth',
+              message: 'No Telegram user',
+              data: {},
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'D'
+            })
+          }).catch(() => {});
+          // #endregion
           console.warn("No Telegram user");
           setLoading(false);
           setInitialized(true);
@@ -40,6 +102,22 @@ export const AuthProvider = ({ children }) => {
         }
 
         // 3️⃣ Авторизация через backend
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'AuthContext.js:initAuth',
+            message: 'Calling auth API',
+            data: { telegramId: tgUser.id },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'D'
+          })
+        }).catch(() => {});
+        // #endregion
+
         const res = await api.post("/auth/telegram", {
           telegram_id: tgUser.id,
           first_name: tgUser.first_name,
@@ -48,9 +126,40 @@ export const AuthProvider = ({ children }) => {
           photo_url: tgUser.photo_url,
         });
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'AuthContext.js:initAuth',
+            message: 'Auth API success',
+            data: { userId: res.data?.id },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'D'
+          })
+        }).catch(() => {});
+        // #endregion
+
         setUser(res.data);
         localStorage.setItem("user", JSON.stringify(res.data));
       } catch (err) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'AuthContext.js:initAuth',
+            message: 'Auth error',
+            data: { error: err.message, status: err.response?.status, responseData: err.response?.data },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'D'
+          })
+        }).catch(() => {});
+        // #endregion
         console.error("Auth error:", err);
       } finally {
         setLoading(false);
