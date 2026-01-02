@@ -1,13 +1,16 @@
 import express from 'express';
 import { dbAll, dbRun, dbGet } from '../database.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(authenticate);
 
 // Get all trusted contacts for user
 router.get('/', async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    const userId = req.userId; // From authentication middleware
 
     const contacts = await dbAll(
       `SELECT * FROM trusted_contacts WHERE user_id = ? ORDER BY created_at DESC`,
@@ -22,9 +25,11 @@ router.get('/', async (req, res) => {
 // Add trusted contact
 router.post('/', async (req, res) => {
   try {
-    const { userId, contactTelegramId, contactName, canViewHealthData, canReceiveAlerts } = req.body;
-    if (!userId || !contactTelegramId) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const { contactTelegramId, contactName, canViewHealthData, canReceiveAlerts } = req.body;
+    const userId = req.userId; // From authentication middleware
+    
+    if (!contactTelegramId) {
+      return res.status(400).json({ error: 'contactTelegramId is required' });
     }
 
     const result = await dbRun(

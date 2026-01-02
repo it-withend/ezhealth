@@ -1,7 +1,9 @@
 import express from "express";
 import multer from "multer";
 import fs from "fs";
+import path from "path";
 import OpenAI from "openai";
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -19,45 +21,161 @@ function getOpenAIClient() {
   return openai;
 }
 
-// Simple mock AI response (replace with actual OpenAI API)
-router.post("/analyze", async (req, res) => {
+// POST /api/ai/analyze - Analyze text message
+router.post("/analyze", authenticate, async (req, res) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:23',message:'POST /analyze called',data:{hasMessage:!!req.body.message,hasHistory:!!req.body.history},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   try {
     const { message, history } = req.body;
 
     if (!message) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:30',message:'Missing message error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       return res.status(400).json({ error: "Missing message" });
     }
 
-    // Mock response (replace with actual OpenAI call)
-    const mockResponses = [
-      "Based on your symptoms, I recommend consulting with a doctor for proper diagnosis. In the meantime, stay hydrated and rest.",
-      "Your health metrics look normal. Continue monitoring them regularly.",
-      "High blood pressure might be related to stress. Try relaxation techniques and reduce salt intake.",
-      "Your sleep pattern seems irregular. Try maintaining a consistent sleep schedule.",
-      "The symptoms you describe could have multiple causes. Please consult a healthcare professional for accurate diagnosis."
-    ];
+    // Use actual OpenAI API
+    try {
+      const openaiClient = getOpenAIClient();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:40',message:'Calling OpenAI API',data:{hasApiKey:!!process.env.OPENAI_API_KEY,messageLength:message.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      
+      const messages = [
+        { 
+          role: "system", 
+          content: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals." 
+        },
+        { role: "user", content: message }
+      ];
 
-    const response = mockResponses[Math.floor(Math.random() * mockResponses.length)];
+      // Add history if provided
+      if (history && Array.isArray(history)) {
+        messages.splice(1, 0, ...history.map(h => ({
+          role: h.role || "user",
+          content: h.content || h.text || ""
+        })));
+      }
 
-    // In production, use actual OpenAI API:
-    // const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    // const completion = await openai.chat.completions.create({
-    //   model: "gpt-4",
-    //   messages: [
-    //     { role: "system", content: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals." },
-    //     { role: "user", content: message }
-    //   ]
-    // });
+      const completion = await openaiClient.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: messages
+      });
 
-    res.json({ response });
+      const response = completion.choices[0].message.content;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:65',message:'OpenAI response received',data:{responseLength:response.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      res.json({ response });
+    } catch (openaiError) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:70',message:'OpenAI API error',data:{error:openaiError.message},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      console.error("OpenAI API Error:", openaiError);
+      // Fallback to simple response if API fails
+      res.status(500).json({ 
+        error: "AI service temporarily unavailable. Please try again later.",
+        details: process.env.NODE_ENV === 'development' ? openaiError.message : undefined
+      });
+    }
   } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:80',message:'General error in /analyze',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     console.error("AI Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// POST /api/ai/analyze-file - Analyze uploaded file
+router.post("/analyze-file", authenticate, upload.single("file"), async (req, res) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:88',message:'POST /analyze-file called',data:{hasFile:!!req.file},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  let filePath = null;
+  try {
+    // Check if file was uploaded
+    if (!req.file) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:95',message:'No file uploaded error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    filePath = req.file.path;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:102',message:'Reading file',data:{filePath,fileSize:req.file.size},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    // Read file with error handling
+    let fileText;
+    try {
+      fileText = fs.readFileSync(filePath, "utf8");
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:109',message:'File read successfully',data:{textLength:fileText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+    } catch (readError) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:113',message:'File read error',data:{error:readError.message,filePath},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return res.status(400).json({ error: "Failed to read file", details: readError.message });
+    }
+
+    // Get OpenAI client
+    const openaiClient = getOpenAIClient();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:120',message:'Calling OpenAI for file analysis',data:{fileTextLength:fileText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    const completion = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Analyze the medical document. Explain results simply. Highlight risks."
+        },
+        { role: "user", content: fileText }
+      ]
+    });
+
+    const analysis = completion.choices[0].message.content;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:135',message:'File analysis complete',data:{analysisLength:analysis.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    // Clean up uploaded file
+    try {
+      if (filePath && fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (cleanupError) {
+      console.warn("Failed to cleanup file:", cleanupError);
+    }
+
+    res.json({ analysis });
+  } catch (error) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:148',message:'Error in /analyze-file',data:{error:error.message,filePath},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    
+    // Clean up file on error
+    if (filePath && fs.existsSync(filePath)) {
+      try {
+        fs.unlinkSync(filePath);
+      } catch (cleanupError) {
+        console.warn("Failed to cleanup file on error:", cleanupError);
+      }
+    }
+    
+    console.error("File analysis error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Generate doctor's report
-router.post("/generate-report", async (req, res) => {
+router.post("/generate-report", authenticate, async (req, res) => {
   try {
     const { messages, userName } = req.body;
 
@@ -96,51 +214,36 @@ Note: This is an AI-generated summary for reference only. Please consult with he
 });
 
 /**
- * POST /ai/analyze
- * form-data: file
- */
-router.post("/analyze", upload.single("file"), async (req, res) => {
-  const fileText = fs.readFileSync(req.file.path, "utf8");
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content:
-          "Analyze the medical document. Explain results simply. Highlight risks."
-      },
-      { role: "user", content: fileText }
-    ]
-  });
-
-  res.json({
-    analysis: completion.choices[0].message.content
-  });
-});
-
-/**
- * POST /ai/summary
+ * POST /api/ai/summary
  * body: { conversation }
  */
-router.post("/summary", async (req, res) => {
-  const { conversation } = req.body;
+router.post("/summary", authenticate, async (req, res) => {
+  try {
+    const { conversation } = req.body;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content:
-          "Create a short structured medical summary for a doctor."
-      },
-      { role: "user", content: conversation }
-    ]
-  });
+    if (!conversation) {
+      return res.status(400).json({ error: "Missing conversation" });
+    }
 
-  res.json({
-    summary: completion.choices[0].message.content
-  });
+    const openaiClient = getOpenAIClient();
+    const completion = await openaiClient.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Create a short structured medical summary for a doctor."
+        },
+        { role: "user", content: conversation }
+      ]
+    });
+
+    res.json({
+      summary: completion.choices[0].message.content
+    });
+  } catch (error) {
+    console.error("Summary error:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 export default router;

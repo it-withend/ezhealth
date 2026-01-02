@@ -1,15 +1,20 @@
 import express from 'express';
 import { dbGet, dbAll, dbRun } from '../database.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(authenticate);
 
 // Add medical analysis
 router.post('/', async (req, res) => {
   try {
-    const { user_id, title, type, file_path, file_type, notes, date } = req.body;
+    const { title, type, file_path, file_type, notes, date } = req.body;
+    const user_id = req.userId; // From authentication middleware
     
-    if (!user_id || !title || !date) {
-      return res.status(400).json({ error: 'user_id, title, and date are required' });
+    if (!title || !date) {
+      return res.status(400).json({ error: 'title and date are required' });
     }
 
     const result = await dbRun(
@@ -30,13 +35,9 @@ router.post('/', async (req, res) => {
 // Get all analyses
 router.get('/', async (req, res) => {
   try {
-    const userId = req.query.user_id;
+    const userId = req.userId; // From authentication middleware
     const type = req.query.type;
     const limit = parseInt(req.query.limit) || 100;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
 
     let sql = 'SELECT * FROM medical_analyses WHERE user_id = ?';
     const params = [userId];
@@ -65,11 +66,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const analysisId = req.params.id;
-    const userId = req.query.user_id;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
+    const userId = req.userId; // From authentication middleware
 
     const analysis = await dbGet(
       'SELECT * FROM medical_analyses WHERE id = ? AND user_id = ?',
@@ -94,11 +91,8 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const analysisId = req.params.id;
-    const { user_id, title, type, file_path, file_type, notes, date } = req.body;
-    
-    if (!user_id) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
+    const { title, type, file_path, file_type, notes, date } = req.body;
+    const user_id = req.userId; // From authentication middleware
 
     await dbRun(
       'UPDATE medical_analyses SET title = ?, type = ?, file_path = ?, file_type = ?, notes = ?, date = ? WHERE id = ? AND user_id = ?',
@@ -116,11 +110,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const analysisId = req.params.id;
-    const userId = req.query.user_id;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
+    const userId = req.userId; // From authentication middleware
 
     await dbRun(
       'DELETE FROM medical_analyses WHERE id = ? AND user_id = ?',

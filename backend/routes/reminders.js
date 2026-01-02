@@ -1,13 +1,16 @@
 import express from 'express';
 import { dbAll, dbRun, dbGet } from '../database.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(authenticate);
 
 // Get all reminders for user
 router.get('/', async (req, res) => {
   try {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    const userId = req.userId; // From authentication middleware
 
     const reminders = await dbAll(
       `SELECT * FROM medications WHERE user_id = ? AND is_active = 1 ORDER BY reminder_time ASC`,
@@ -22,9 +25,11 @@ router.get('/', async (req, res) => {
 // Create new reminder (medication)
 router.post('/', async (req, res) => {
   try {
-    const { userId, name, dosage, frequency, reminderTime } = req.body;
-    if (!userId || !name) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const { name, dosage, frequency, reminderTime } = req.body;
+    const userId = req.userId; // From authentication middleware
+    
+    if (!name) {
+      return res.status(400).json({ error: 'name is required' });
     }
 
     const result = await dbRun(

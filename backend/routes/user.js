@@ -1,16 +1,13 @@
 import express from 'express';
 import { dbGet, dbAll, dbRun } from '../database.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get user profile
-router.get('/profile', async (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
   try {
-    const userId = req.query.user_id;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
+    const userId = req.userId; // From authentication middleware
 
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     
@@ -37,13 +34,9 @@ router.get('/profile', async (req, res) => {
 });
 
 // Get trusted contacts
-router.get('/trusted-contacts', async (req, res) => {
+router.get('/trusted-contacts', authenticate, async (req, res) => {
   try {
-    const userId = req.query.user_id;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
+    const userId = req.userId; // From authentication middleware
 
     const contacts = await dbAll(
       'SELECT * FROM trusted_contacts WHERE user_id = ?',
@@ -61,12 +54,13 @@ router.get('/trusted-contacts', async (req, res) => {
 });
 
 // Add trusted contact
-router.post('/trusted-contacts', async (req, res) => {
+router.post('/trusted-contacts', authenticate, async (req, res) => {
   try {
-    const { user_id, contact_telegram_id, contact_name, can_view_health_data, can_receive_alerts } = req.body;
+    const { contact_telegram_id, contact_name, can_view_health_data, can_receive_alerts } = req.body;
+    const user_id = req.userId; // From authentication middleware
     
-    if (!user_id || !contact_telegram_id) {
-      return res.status(400).json({ error: 'user_id and contact_telegram_id are required' });
+    if (!contact_telegram_id) {
+      return res.status(400).json({ error: 'contact_telegram_id is required' });
     }
 
     const result = await dbRun(
@@ -85,14 +79,10 @@ router.post('/trusted-contacts', async (req, res) => {
 });
 
 // Remove trusted contact
-router.delete('/trusted-contacts/:id', async (req, res) => {
+router.delete('/trusted-contacts/:id', authenticate, async (req, res) => {
   try {
     const contactId = req.params.id;
-    const userId = req.query.user_id;
-    
-    if (!userId) {
-      return res.status(400).json({ error: 'user_id is required' });
-    }
+    const userId = req.userId; // From authentication middleware
 
     await dbRun(
       'DELETE FROM trusted_contacts WHERE id = ? AND user_id = ?',
