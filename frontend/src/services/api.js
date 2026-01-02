@@ -4,6 +4,26 @@ const API_URL =
   process.env.REACT_APP_API_URL ||
   "https://ezhealth-l6zx.onrender.com/api";
 
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    location: 'api.js:config',
+    message: 'API configuration',
+    data: { 
+      apiUrl: API_URL, 
+      envUrl: process.env.REACT_APP_API_URL,
+      fullUrl: `${API_URL}/auth/telegram`
+    },
+    timestamp: Date.now(),
+    sessionId: 'debug-session',
+    runId: 'run1',
+    hypothesisId: 'B'
+  })
+}).catch(() => {});
+// #endregion
+
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -14,13 +34,20 @@ export const api = axios.create({
 // Передаём Telegram initData в каждый запрос
 api.interceptors.request.use((config) => {
   // #region agent log
+  const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;
   fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       location: 'api.js:request',
       message: 'API request',
-      data: { url: config.url, method: config.method, hasInitData: !!window.Telegram?.WebApp?.initData },
+      data: { 
+        url: config.url, 
+        baseURL: config.baseURL,
+        fullUrl: fullUrl,
+        method: config.method, 
+        hasInitData: !!window.Telegram?.WebApp?.initData 
+      },
       timestamp: Date.now(),
       sessionId: 'debug-session',
       runId: 'run1',
