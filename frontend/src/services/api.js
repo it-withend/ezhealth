@@ -1,8 +1,13 @@
 import axios from "axios";
 
-const API_URL =
-  process.env.REACT_APP_API_URL ||
-  "https://ezhealth-l6zx.onrender.com/api";
+// Ensure API_URL always ends with /api
+let API_URL = process.env.REACT_APP_API_URL || "https://ezhealth-l6zx.onrender.com/api";
+
+// Force fix: remove trailing slash and ensure /api suffix
+API_URL = API_URL.trim().replace(/\/+$/, ''); // Remove trailing slashes
+if (!API_URL.endsWith('/api')) {
+  API_URL = `${API_URL}/api`;
+}
 
 // #region agent log
 fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
@@ -14,11 +19,13 @@ fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
     data: { 
       apiUrl: API_URL, 
       envUrl: process.env.REACT_APP_API_URL,
-      fullUrl: `${API_URL}/auth/telegram`
+      fullUrl: `${API_URL}/auth/telegram`,
+      fixed: true,
+      afterFix: API_URL
     },
     timestamp: Date.now(),
     sessionId: 'debug-session',
-    runId: 'run1',
+    runId: 'run2',
     hypothesisId: 'B'
   })
 }).catch(() => {});
