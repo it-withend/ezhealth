@@ -36,13 +36,13 @@ export default function Home() {
           {
             id: 1,
             name: "St. John Hospital",
-            address: "320 Parker Rd",
+            address: "4140 Parker Rd",
             distance: "200 m"
           },
           {
             id: 2,
             name: "ABC Pharmacy",
-            address: "1234 Somewhere Dr",
+            address: "3801 Ranchview Dr.",
             distance: "350 m"
           }
         ],
@@ -50,7 +50,8 @@ export default function Home() {
           {
             id: 1,
             text: "Latest COVID Updates",
-            subtitle: "Subscribe to get daily COVID updates"
+            subtitle: "Subscribe to get daily COVID updates",
+            icon: "🦠"
           }
         ]
       });
@@ -77,6 +78,7 @@ export default function Home() {
 
       {/* Search Bar */}
       <div className="search-container">
+        <span className="search-icon-left">🔍</span>
         <input
           type="text"
           placeholder="Find a doctor or specialty"
@@ -84,7 +86,6 @@ export default function Home() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="search-input"
         />
-        <span className="search-icon">🔍</span>
       </div>
 
       {/* Upcoming Appointments Section */}
@@ -97,14 +98,14 @@ export default function Home() {
         </div>
         {data?.appointments && data.appointments.length > 0 ? (
           <div className="appointments-list">
-            {data.appointments.map(a => (
+            {data.appointments.map((a, index) => (
               <Card
                 key={a.id}
                 onClick={() => navigate("/assistant")}
-                className="appointment-card"
+                className={index === 0 ? "appointment-card appointment-card-green" : "appointment-card appointment-card-white"}
               >
                 <div className="appointment-header">
-                  <div className="appointment-icon">🦷</div>
+                  <div className="appointment-icon">{index === 0 ? "🦷" : "📷"}</div>
                   <div className="appointment-details">
                     <div className="doctor-name">{a.doctor}</div>
                     <div className="specialty">{a.specialty}</div>
@@ -156,7 +157,7 @@ export default function Home() {
           <div className="alerts-list">
             {data.alerts.map(a => (
               <Card key={a.id} className="alert-card">
-                <div className="alert-icon">📢</div>
+                <div className="alert-icon">{a.icon || "📢"}</div>
                 <div className="alert-text">
                   <div className="alert-title">{a.text}</div>
                   <div className="alert-subtitle">{a.subtitle}</div>

@@ -1,15 +1,20 @@
-export default function Card({ children }) {
-    return (
-      <div
-        style={{
-          background: "#162D29",
-          borderRadius: 18,
-          padding: 16,
-          marginBottom: 12,
-        }}
-      >
-        {children}
-      </div>
-    );
-  }
+export default function Card({ children, className = "", onClick, style = {} }) {
+  return (
+    <div
+      className={className}
+      onClick={onClick}
+      style={{
+        background: "white",
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        cursor: onClick ? "pointer" : "default",
+        transition: "all 0.2s ease",
+        ...style
+      }}
+    >
+      {children}
+    </div>
+  );
+}
   

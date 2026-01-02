@@ -23,6 +23,7 @@
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .profile-section {
@@ -92,6 +93,8 @@
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e8e8;
 }
 
 .edit-form h3 {
@@ -173,6 +176,7 @@
   padding: 20px;
   border-radius: 12px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .info-card h3 {
@@ -204,6 +208,29 @@
   font-size: 13px;
   color: #1a1a1a;
   font-weight: 500;
+}
+
+/* Ensure text is visible on all backgrounds */
+.profile-card,
+.info-card,
+.contact-card,
+.add-contact-form,
+.edit-form,
+.settings-card {
+  color: #1a1a1a;
+}
+
+.profile-card h2,
+.profile-card h3,
+.info-card h3,
+.section-header h3 {
+  color: #1a1a1a;
+}
+
+.profile-email,
+.contact-handle,
+.card-description {
+  color: #666;
 }
 
 .section {
@@ -250,6 +277,8 @@
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e8e8;
 }
 
 .contacts-list {
@@ -266,6 +295,8 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e8e8;
 }
 
 .contact-info {
@@ -322,6 +353,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e8e8;
 }
 
 .settings-btn,

@@ -9,14 +9,14 @@ export default function Assistant() {
   const assistantOptions = [
     {
       id: 1,
-      icon: "📅",
+      icon: "🏥",
       title: "Schedule an Appointment",
       description: "Find a doctor and book your appointment",
       color: "#2D9B8C"
     },
     {
       id: 2,
-      icon: "💬",
+      icon: "📖",
       title: "Get Advice",
       description: "Chat with our AI and get medical advice",
       color: "#4db8a8"
@@ -30,7 +30,7 @@ export default function Assistant() {
     },
     {
       id: 4,
-      icon: "👨‍⚕️",
+      icon: "👥",
       title: "Review Doctors",
       description: "Read reviews and find specialists",
       color: "#4db8a8"
@@ -53,16 +53,20 @@ export default function Assistant() {
     <div className="assistant-container">
       <div className="assistant-header">
         <button className="back-btn" onClick={() => navigate("/home")}>
-          ← Back
+          ←
         </button>
-        <h1>Assistant</h1>
-        <div className="header-spacer"></div>
+        <div className="assistant-header-center">
+          <div className="assistant-icon">🤖</div>
+          <h1>Assistant</h1>
+        </div>
+        <button className="menu-btn">⋯</button>
       </div>
 
       <div className="assistant-content">
         <div className="greeting-section">
-          <h2>Hello! 👋 I'm your Virtual Assistant.</h2>
-          <p>Select any topic or write your question below.</p>
+          <div className="greeting-bubble">
+            <p>Hello! 👋 I'm your Virtual Assistant. Select any topic or write your question below:</p>
+          </div>
         </div>
 
         <div className="options-grid">
