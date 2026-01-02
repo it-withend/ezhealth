@@ -1,10 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
 import "../styles/Assistant.css";
 
 export default function Assistant() {
   const navigate = useNavigate();
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'Assistant.jsx:mount',
+        message: 'Assistant component mounted',
+        data: { path: window.location.pathname },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'F'
+      })
+    }).catch(() => {});
+  }, []);
+  // #endregion
 
   const assistantOptions = [
     {
@@ -38,14 +56,51 @@ export default function Assistant() {
   ];
 
   const handleOptionClick = (option) => {
-    if (option.id === 1) {
-      navigate("/appointments");
-    } else if (option.id === 2) {
-      navigate("/ai-chat");
-    } else if (option.id === 3) {
-      navigate("/documents");
-    } else if (option.id === 4) {
-      navigate("/doctors");
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'Assistant.jsx:handleOptionClick',
+        message: 'Option clicked',
+        data: { optionId: option.id, optionTitle: option.title },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'F'
+      })
+    }).catch(() => {});
+    // #endregion
+
+    try {
+      if (option.id === 1) {
+        // Navigate to health metrics for appointments
+        navigate("/health");
+      } else if (option.id === 2) {
+        navigate("/ai-chat");
+      } else if (option.id === 3) {
+        navigate("/documents");
+      } else if (option.id === 4) {
+        // Navigate to profile for doctor reviews
+        navigate("/profile");
+      }
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'Assistant.jsx:handleOptionClick',
+          message: 'Navigation error',
+          data: { error: error.message, optionId: option.id },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'F'
+        })
+      }).catch(() => {});
+      // #endregion
+      console.error('Navigation error:', error);
     }
   };
 

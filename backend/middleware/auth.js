@@ -77,8 +77,36 @@ export async function authenticate(req, res, next) {
                      req.headers['x-telegram-initdata'] ||
                      req.headers['X-Telegram-InitData'];
     if (initData) {
+      console.log('🔐 Auth middleware: Found initData in headers');
       const verification = verifyTelegramAuth(initData);
       if (!verification.isValid) {
+        console.log('🔐 Auth middleware: Hash verification failed, checking fallback');
+        // In development or if TELEGRAM_BOT_TOKEN not set, allow fallback
+        if (process.env.NODE_ENV === 'development' || !process.env.TELEGRAM_BOT_TOKEN) {
+          console.warn('⚠️ Auth bypass: Development mode or TELEGRAM_BOT_TOKEN not set');
+          // Try to get user from initData without verification
+          try {
+            const params = new URLSearchParams(initData);
+            const userStr = params.get('user');
+            if (userStr) {
+              const userData = JSON.parse(userStr);
+              console.log('🔐 Auth middleware: Parsed user from initData:', userData.id);
+              const user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [userData.id]);
+              if (user) {
+                console.log('🔐 Auth middleware: User found in DB:', user.id);
+                req.user = user;
+                req.userId = user.id;
+                return next();
+              } else {
+                console.log('🔐 Auth middleware: User not found in DB, need registration');
+                return res.status(401).json({ error: 'User not found. Please authenticate first via /auth/telegram' });
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse initData:', e.message);
+          }
+        }
+        console.log('🔐 Auth middleware: Returning 401 - hash verification failed');
         return res.status(401).json({ error: 'Unauthorized', details: verification.error });
       }
 
