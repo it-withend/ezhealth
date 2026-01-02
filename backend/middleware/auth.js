@@ -70,73 +70,45 @@ function verifyTelegramAuth(initData) {
  * Checks for user_id in query/body or Telegram initData in headers
  */
 export async function authenticate(req, res, next) {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:67',message:'Authentication middleware called',data:{path:req.path,method:req.method,hasInitData:!!req.headers['x-telegram-init-data'],hasUserId:!!(req.query.user_id||req.body.user_id)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-  // #endregion
-
   try {
-    // Method 1: Check for Telegram initData in headers
-    const initData = req.headers['x-telegram-init-data'];
+    // Method 1: Check for Telegram initData in headers (case-insensitive)
+    const initData = req.headers['x-telegram-init-data'] || 
+                     req.headers['X-Telegram-Init-Data'] ||
+                     req.headers['x-telegram-initdata'] ||
+                     req.headers['X-Telegram-InitData'];
     if (initData) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:75',message:'Verifying Telegram initData',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       const verification = verifyTelegramAuth(initData);
       if (!verification.isValid) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:79',message:'Telegram auth failed',data:{error:verification.error},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         return res.status(401).json({ error: 'Unauthorized', details: verification.error });
       }
 
       // Get user from database
       const user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [verification.telegramId]);
       if (!user) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:86',message:'User not found in DB',data:{telegramId:verification.telegramId},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         return res.status(401).json({ error: 'User not found. Please authenticate first.' });
       }
 
       req.user = user;
       req.userId = user.id;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:93',message:'Authentication successful via initData',data:{userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return next();
     }
 
     // Method 2: Check for user_id in query or body (for backward compatibility)
     const userId = req.query.user_id || req.body.user_id;
     if (userId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:101',message:'Checking user_id',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
       if (!user) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:105',message:'User not found by user_id',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         return res.status(401).json({ error: 'User not found' });
       }
 
       req.user = user;
       req.userId = user.id;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:112',message:'Authentication successful via user_id',data:{userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       return next();
     }
 
     // No authentication provided
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:119',message:'No authentication provided',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     return res.status(401).json({ error: 'Unauthorized. Please provide authentication.' });
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'middleware/auth.js:123',message:'Authentication error',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     console.error('Auth middleware error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }

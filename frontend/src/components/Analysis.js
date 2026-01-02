@@ -26,12 +26,17 @@ function Analysis() {
     if (!user) return;
 
     try {
+      // user_id is now optional - middleware will get it from auth
+      // But we keep it for backward compatibility
       const response = await api.get('/analysis', {
-        params: { user_id: user.id, limit: 100 },
+        params: { limit: 100 },
       });
       setAnalyses(response.data.analyses || []);
     } catch (error) {
       console.error('Error loading analyses:', error);
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+      }
     } finally {
       setLoading(false);
     }
@@ -42,8 +47,8 @@ function Analysis() {
     if (!formData.title || !formData.date) return;
 
     try {
+      // user_id is now optional - middleware will get it from auth
       await api.post('/analysis', {
-        user_id: user.id,
         ...formData,
       });
       setFormData({
@@ -56,7 +61,11 @@ function Analysis() {
       loadAnalyses();
     } catch (error) {
       console.error('Error adding analysis:', error);
-      alert('Ошибка при добавлении анализа');
+      const errorMsg = error.response?.data?.error || 'Ошибка при добавлении анализа';
+      alert(errorMsg);
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+      }
     }
   };
 
@@ -64,13 +73,16 @@ function Analysis() {
     if (!window.confirm('Удалить этот анализ?')) return;
 
     try {
-      await api.delete(`/analysis/${id}`, {
-        params: { user_id: user.id },
-      });
+      // user_id is now optional - middleware will get it from auth
+      await api.delete(`/analysis/${id}`);
       loadAnalyses();
     } catch (error) {
       console.error('Error deleting analysis:', error);
-      alert('Ошибка при удалении');
+      const errorMsg = error.response?.data?.error || 'Ошибка при удалении';
+      alert(errorMsg);
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+      }
     }
   };
 

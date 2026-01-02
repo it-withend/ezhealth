@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
 import "../styles/AIChat.css";
 
 export default function AIChat() {
@@ -39,30 +40,29 @@ export default function AIChat() {
     setInputValue("");
     setLoading(true);
 
-    // Simulate API call to ChatGPT
+    // API call to AI analyze endpoint
     try {
-      const response = await fetch("/api/ai/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: inputValue,
-          history: messages
-        })
+      const response = await api.post("/ai/analyze", {
+        message: inputValue,
+        history: messages.filter(m => m.sender === "user" || m.sender === "bot").map(m => ({
+          role: m.sender === "user" ? "user" : "assistant",
+          content: m.text
+        }))
       });
 
-      const data = await response.json();
       const botMessage = {
         id: messages.length + 2,
-        text: data.response || "I understand. Could you provide more details?",
+        text: response.data.response || "I understand. Could you provide more details?",
         sender: "bot",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("Error:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Unknown error";
       const botMessage = {
         id: messages.length + 2,
-        text: "Sorry, I encountered an error. Please try again.",
+        text: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
         sender: "bot",
         timestamp: new Date()
       };

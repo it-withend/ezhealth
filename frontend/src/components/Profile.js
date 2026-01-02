@@ -23,12 +23,14 @@ function Profile() {
     if (!user) return;
 
     try {
-      const response = await api.get('/user/trusted-contacts', {
-        params: { user_id: user.id },
-      });
+      // user_id is now optional - middleware will get it from auth
+      const response = await api.get('/user/trusted-contacts');
       setContacts(response.data.contacts || []);
     } catch (error) {
       console.error('Error loading contacts:', error);
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+      }
     } finally {
       setLoading(false);
     }
@@ -39,8 +41,8 @@ function Profile() {
     if (!contactData.contact_telegram_id) return;
 
     try {
+      // user_id is now optional - middleware will get it from auth
       await api.post('/user/trusted-contacts', {
-        user_id: user.id,
         ...contactData,
         contact_telegram_id: parseInt(contactData.contact_telegram_id),
       });
@@ -49,7 +51,11 @@ function Profile() {
       loadContacts();
     } catch (error) {
       console.error('Error adding contact:', error);
-      alert('Ошибка при добавлении контакта');
+      const errorMsg = error.response?.data?.error || 'Ошибка при добавлении контакта';
+      alert(errorMsg);
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+      }
     }
   };
 
@@ -57,13 +63,16 @@ function Profile() {
     if (!window.confirm('Удалить этого доверенного человека?')) return;
 
     try {
-      await api.delete(`/user/trusted-contacts/${id}`, {
-        params: { user_id: user.id },
-      });
+      // user_id is now optional - middleware will get it from auth
+      await api.delete(`/user/trusted-contacts/${id}`);
       loadContacts();
     } catch (error) {
       console.error('Error deleting contact:', error);
-      alert('Ошибка при удалении');
+      const errorMsg = error.response?.data?.error || 'Ошибка при удалении';
+      alert(errorMsg);
+      if (error.response?.status === 401) {
+        alert('Ошибка авторизации. Пожалуйста, войдите снова.');
+      }
     }
   };
 

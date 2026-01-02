@@ -23,25 +23,16 @@ function getOpenAIClient() {
 
 // POST /api/ai/analyze - Analyze text message
 router.post("/analyze", authenticate, async (req, res) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:23',message:'POST /analyze called',data:{hasMessage:!!req.body.message,hasHistory:!!req.body.history},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   try {
     const { message, history } = req.body;
 
     if (!message) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:30',message:'Missing message error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return res.status(400).json({ error: "Missing message" });
     }
 
     // Use actual OpenAI API
     try {
       const openaiClient = getOpenAIClient();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:40',message:'Calling OpenAI API',data:{hasApiKey:!!process.env.OPENAI_API_KEY,messageLength:message.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       const messages = [
         { 
@@ -65,14 +56,8 @@ router.post("/analyze", authenticate, async (req, res) => {
       });
 
       const response = completion.choices[0].message.content;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:65',message:'OpenAI response received',data:{responseLength:response.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       res.json({ response });
     } catch (openaiError) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:70',message:'OpenAI API error',data:{error:openaiError.message},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       console.error("OpenAI API Error:", openaiError);
       // Fallback to simple response if API fails
       res.status(500).json({ 
@@ -81,9 +66,6 @@ router.post("/analyze", authenticate, async (req, res) => {
       });
     }
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:80',message:'General error in /analyze',data:{error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     console.error("AI Error:", error);
     res.status(500).json({ error: error.message });
   }
@@ -91,43 +73,25 @@ router.post("/analyze", authenticate, async (req, res) => {
 
 // POST /api/ai/analyze-file - Analyze uploaded file
 router.post("/analyze-file", authenticate, upload.single("file"), async (req, res) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:88',message:'POST /analyze-file called',data:{hasFile:!!req.file},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
   let filePath = null;
   try {
     // Check if file was uploaded
     if (!req.file) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:95',message:'No file uploaded error',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return res.status(400).json({ error: "No file uploaded" });
     }
 
     filePath = req.file.path;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:102',message:'Reading file',data:{filePath,fileSize:req.file.size},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     // Read file with error handling
     let fileText;
     try {
       fileText = fs.readFileSync(filePath, "utf8");
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:109',message:'File read successfully',data:{textLength:fileText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
     } catch (readError) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:113',message:'File read error',data:{error:readError.message,filePath},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return res.status(400).json({ error: "Failed to read file", details: readError.message });
     }
 
     // Get OpenAI client
     const openaiClient = getOpenAIClient();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:120',message:'Calling OpenAI for file analysis',data:{fileTextLength:fileText.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     const completion = await openaiClient.chat.completions.create({
       model: "gpt-4o-mini",
@@ -141,9 +105,6 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
     });
 
     const analysis = completion.choices[0].message.content;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:135',message:'File analysis complete',data:{analysisLength:analysis.length},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     // Clean up uploaded file
     try {
@@ -156,10 +117,6 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
 
     res.json({ analysis });
   } catch (error) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'routes/ai.js:148',message:'Error in /analyze-file',data:{error:error.message,filePath},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    
     // Clean up file on error
     if (filePath && fs.existsSync(filePath)) {
       try {
