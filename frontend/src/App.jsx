@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Assistant from "./pages/Assistant";
 import HealthMetrics from "./pages/HealthMetrics";
 import Consultation from "./pages/Consultation";
+import AIChat from "./pages/AIChat";
 import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
 import Documents from "./pages/Documents";
@@ -89,7 +90,7 @@ function App() {
           path="/ai-chat"
           element={
             <>
-              <Consultation />
+              <AIChat />
               <BottomNav />
             </>
           }

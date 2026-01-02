@@ -1,67 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { SendIcon, UploadIcon, CloseIcon } from "../ui/icons/icons";
+import { api } from "../services/api";
 import "./styles/Consultation.css";
 
 export default function Consultation() {
-  const [messages, setMessages] = useState([]);
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      text: "Здравствуйте! Я ваш AI помощник по здоровью. Как я могу помочь?",
+      sender: "ai",
+      timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+    }
+  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sessionId] = useState(() => {
-    let id = localStorage.getItem("consultationSessionId");
-    if (!id) {
-      id = "session_" + Date.now();
-      localStorage.setItem("consultationSessionId", id);
-    }
-    return id;
-  });
   const messagesEndRef = useRef(null);
-
-  // Load messages from localStorage
-  useEffect(() => {
-    const savedMessages = localStorage.getItem(`messages_${sessionId}`);
-    if (savedMessages) {
-      try {
-        setMessages(JSON.parse(savedMessages));
-      } catch (e) {
-        console.error("Failed to load messages");
-      }
-    }
-  }, [sessionId]);
-
-  // Save messages to localStorage
-  useEffect(() => {
-    localStorage.setItem(`messages_${sessionId}`, JSON.stringify(messages));
-  }, [messages, sessionId]);
 
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const mockChatGPTResponse = (userMessage) => {
-    const responses = {
-      headache: "Я понимаю, что у вас болит голова. Это может быть вызвано стрессом, недостатком сна или напряжением. Рекомендую:\n\n1. Отдохнуть в тихом месте\n2. Выпить воды\n3. Применить холодный компресс\n4. Если боль сильная, можно принять парацетамол\n\nЕсли боль не проходит более 2 дней, обратитесь к врачу.",
-      fever: "Повышенная температура может указывать на инфекцию. Что я рекомендую:\n\n1. Измерьте температуру регулярно\n2. Пейте много жидкости (вода, чай с лимоном)\n3. Отдыхайте\n4. При температуре выше 38.5°C примите жаропонижающее\n\nОбратитесь к врачу, если температура держится более 3 дней.",
-      cough: "Кашель может быть проявлением простуды, гриппа или аллергии. Рекомендации:\n\n1. Увлажняйте воздух в помещении\n2. Пейте теплые напитки\n3. Избегайте раздражителей\n4. При сухом кашле помогут леденцы\n5. При влажном кашле - экспекторанты\n\nЕсли кашель длится более недели, посетите врача.",
-      throat: "Боль в горле часто вызвана вирусной или бактериальной инфекцией. Советы:\n\n1. Полощите горло теплой соленой водой\n2. Пейте теплые жидкости\n3. Избегайте острого и горячего\n4. Используйте мед и лимон\n5. Если боль сильная, примите анальгетик\n\nОбратитесь к врачу при наличии белого налета.",
-      pressure: "Высокое кровяное давление требует внимания. Что можно сделать:\n\n1. Расслабьтесь и избегайте стресса\n2. Ограничьте соль в рационе\n3. Увеличьте физическую активность\n4. Избегайте алкоголя и кофеина\n5. Контролируйте вес\n\nМедицинский персонал может назначить специальные лекарства.",
-      sleep: "Проблемы со сном очень распространены. Рекомендации для улучшения сна:\n\n1. Установите регулярное расписание сна\n2. Избегайте экранов за час до сна\n3. Создайте комфортную среду\n4. Практикуйте релаксацию или медитацию\n5. Избегайте кофеина и тяжелой пищи перед сном\n\nЕсли проблема сохраняется, консультируйтесь со специалистом.",
-      diet: "Здоровое питание - основа здоровья. Основные принципы:\n\n1. Ешьте разнообразные овощи и фрукты\n2. Выбирайте нежирные белки\n3. Включайте цельные зерна\n4. Ограничьте сахар и соль\n5. Пейте достаточно воды\n6. Избегайте обработанных продуктов\n\nПроконсультируйтесь с диетологом для персональной диеты."
-    };
-
-    const lowerMessage = userMessage.toLowerCase();
-    
-    for (const [key, response] of Object.entries(responses)) {
-      if (lowerMessage.includes(key)) {
-        return response;
-      }
-    }
-
-    return "Спасибо за ваш вопрос! На основе описанных симптомов рекомендую:\n\n1. Проконсультироваться с врачом\n2. Регулярно измерять показатели здоровья\n3. Вести здоровый образ жизни\n4. Питаться правильно\n5. Заниматься физическими упражнениями\n\nЕсли состояние ухудшается, незамедлительно обратитесь в медицинское учреждение.";
-  };
-
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage = input.trim();
     setInput("");
@@ -75,26 +38,100 @@ export default function Consultation() {
     };
     setMessages(prev => [...prev, newUserMessage]);
 
-    // Simulate AI thinking
+    // Call real API
     setLoading(true);
-    setTimeout(() => {
-      const response = mockChatGPTResponse(userMessage);
+    try {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'Consultation.jsx:handleSendMessage',
+          message: 'Sending message to AI',
+          data: { message: userMessage, messagesCount: messages.length },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'E'
+        })
+      }).catch(() => {});
+      // #endregion
+
+      const response = await api.post("/ai/analyze", {
+        message: userMessage,
+        history: messages.filter(m => m.sender === "user" || m.sender === "ai").map(m => ({
+          role: m.sender === "user" ? "user" : "assistant",
+          content: m.text
+        }))
+      });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'Consultation.jsx:handleSendMessage',
+          message: 'AI response received',
+          data: { hasResponse: !!response.data?.response, responseLength: response.data?.response?.length },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'E'
+        })
+      }).catch(() => {});
+      // #endregion
+
       const aiMessage = {
         id: Date.now() + 1,
-        text: response,
+        text: response.data.response || "Извините, не удалось получить ответ. Попробуйте еще раз.",
         sender: "ai",
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
       };
       setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'Consultation.jsx:handleSendMessage',
+          message: 'AI API error',
+          data: { error: error.message, status: error.response?.status, responseData: error.response?.data },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'E'
+        })
+      }).catch(() => {});
+      // #endregion
+
+      console.error("AI API error:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Ошибка при обращении к AI";
+      const aiMessage = {
+        id: Date.now() + 1,
+        text: `Извините, произошла ошибка: ${errorMessage}. Пожалуйста, попробуйте еще раз.`,
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const handleClearChat = () => {
     if (window.confirm("Вы уверены, что хотите очистить чат?")) {
-      setMessages([]);
-      localStorage.removeItem(`messages_${sessionId}`);
+      setMessages([{
+        id: 1,
+        text: "Здравствуйте! Я ваш AI помощник по здоровью. Как я могу помочь?",
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      }]);
     }
+  };
+
+  const handleGenerateReport = () => {
+    navigate("/generate-report", { state: { messages } });
   };
 
   return (
@@ -102,6 +139,14 @@ export default function Consultation() {
       <div className="consultation-header">
         <h1>AI Консультация</h1>
         <p className="header-subtitle">Получите мгновенные советы по здоровью</p>
+        <button 
+          className="report-btn" 
+          onClick={handleGenerateReport} 
+          title="Сгенерировать отчет для врача"
+          style={{ marginTop: '10px', padding: '8px 16px', background: '#2D9B8C', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+        >
+          📋 Создать отчет
+        </button>
       </div>
 
       <div className="messages-area">

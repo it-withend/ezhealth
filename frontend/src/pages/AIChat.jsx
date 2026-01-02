@@ -27,7 +27,7 @@ export default function AIChat() {
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || loading) return;
 
     const userMessage = {
       id: messages.length + 1,
@@ -36,19 +36,52 @@ export default function AIChat() {
       timestamp: new Date()
     };
 
+    const messageText = inputValue;
     setMessages(prev => [...prev, userMessage]);
     setInputValue("");
     setLoading(true);
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'AIChat.jsx:handleSendMessage',
+        message: 'Sending message to AI',
+        data: { message: messageText, messagesCount: messages.length },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'E'
+      })
+    }).catch(() => {});
+    // #endregion
+
     // API call to AI analyze endpoint
     try {
       const response = await api.post("/ai/analyze", {
-        message: inputValue,
+        message: messageText,
         history: messages.filter(m => m.sender === "user" || m.sender === "bot").map(m => ({
           role: m.sender === "user" ? "user" : "assistant",
           content: m.text
         }))
       });
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'AIChat.jsx:handleSendMessage',
+          message: 'AI response received',
+          data: { hasResponse: !!response.data?.response, responseLength: response.data?.response?.length },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'E'
+        })
+      }).catch(() => {});
+      // #endregion
 
       const botMessage = {
         id: messages.length + 2,
@@ -58,6 +91,22 @@ export default function AIChat() {
       };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'AIChat.jsx:handleSendMessage',
+          message: 'AI API error',
+          data: { error: error.message, status: error.response?.status, responseData: error.response?.data },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'E'
+        })
+      }).catch(() => {});
+      // #endregion
+
       console.error("Error:", error);
       const errorMessage = error.response?.data?.error || error.message || "Unknown error";
       const botMessage = {
