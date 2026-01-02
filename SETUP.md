@@ -6,7 +6,7 @@
 ```
 PORT=3000
 NODE_ENV=development
-OPENAI_API_KEY=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
+OPENAI_API_KEY=sk-
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 ```
 
