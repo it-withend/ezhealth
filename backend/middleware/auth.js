@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { dbGet } from '../database.js';
+import { dbGet, dbRun } from '../database.js';
 
 /**
  * Verify Telegram authentication from initData
@@ -15,6 +15,17 @@ function verifyTelegramAuth(initData) {
   }
 
   if (!process.env.TELEGRAM_BOT_TOKEN) {
+    // If token not configured, try to extract user data without verification
+    try {
+      const params = new URLSearchParams(initData);
+      const userStr = params.get('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        return { isValid: true, telegramId: user.id.toString(), user };
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
     return { isValid: false, error: 'TELEGRAM_BOT_TOKEN not configured' };
   }
 
@@ -91,15 +102,29 @@ export async function authenticate(req, res, next) {
             if (userStr) {
               const userData = JSON.parse(userStr);
               console.log('🔐 Auth middleware: Parsed user from initData:', userData.id);
-              const user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [userData.id]);
+              let user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [userData.id]);
               if (user) {
                 console.log('🔐 Auth middleware: User found in DB:', user.id);
                 req.user = user;
                 req.userId = user.id;
                 return next();
               } else {
-                console.log('🔐 Auth middleware: User not found in DB, need registration');
-                return res.status(401).json({ error: 'User not found. Please authenticate first via /auth/telegram' });
+                // Auto-create user if not exists (for convenience)
+                console.log('🔐 Auth middleware: User not found in DB, auto-creating...');
+                try {
+                  const result = await dbRun(
+                    'INSERT INTO users (telegram_id, first_name, last_name, username, photo_url) VALUES (?, ?, ?, ?, ?)',
+                    [userData.id, userData.first_name || null, userData.last_name || null, userData.username || null, userData.photo_url || null]
+                  );
+                  user = await dbGet('SELECT * FROM users WHERE id = ?', [result.lastID]);
+                  console.log('🔐 Auth middleware: User auto-created:', user.id);
+                  req.user = user;
+                  req.userId = user.id;
+                  return next();
+                } catch (createError) {
+                  console.error('🔐 Auth middleware: Failed to auto-create user:', createError);
+                  return res.status(401).json({ error: 'User not found. Please authenticate first via /auth/telegram' });
+                }
               }
             }
           } catch (e) {
@@ -111,9 +136,22 @@ export async function authenticate(req, res, next) {
       }
 
       // Get user from database
-      const user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [verification.telegramId]);
+      let user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [verification.telegramId]);
       if (!user) {
-        return res.status(401).json({ error: 'User not found. Please authenticate first.' });
+        // Auto-create user if not exists (for convenience)
+        console.log('🔐 Auth middleware: User not found in DB, auto-creating from verified initData...');
+        try {
+          const userData = verification.user || {};
+          const result = await dbRun(
+            'INSERT INTO users (telegram_id, first_name, last_name, username, photo_url) VALUES (?, ?, ?, ?, ?)',
+            [verification.telegramId, userData.first_name || null, userData.last_name || null, userData.username || null, userData.photo_url || null]
+          );
+          user = await dbGet('SELECT * FROM users WHERE id = ?', [result.lastID]);
+          console.log('🔐 Auth middleware: User auto-created:', user.id);
+        } catch (createError) {
+          console.error('🔐 Auth middleware: Failed to auto-create user:', createError);
+          return res.status(401).json({ error: 'User not found. Please authenticate first.' });
+        }
       }
 
       req.user = user;
