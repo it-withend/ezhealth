@@ -68,7 +68,7 @@ router.post("/analyze", authenticate, async (req, res) => {
     // Use Gemini API
     try {
       const client = getGeminiClient();
-      const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
       
       // System instruction - must be in Content format (object with parts)
       const systemInstruction = {
@@ -199,7 +199,7 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
 
     // Get Gemini client
     const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     let analysis;
     try {
@@ -265,7 +265,7 @@ router.post("/generate-report", authenticate, async (req, res) => {
 
     try {
       const client = getGeminiClient();
-      const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
       
       const prompt = `You are a medical assistant creating a concise summary report for a doctor. 
 Create a structured medical consultation summary in Russian language. 
@@ -332,7 +332,7 @@ router.post("/summary", authenticate, async (req, res) => {
     }
 
     const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
     
     const prompt = `Create a short structured medical summary for a doctor in Russian language.
 
