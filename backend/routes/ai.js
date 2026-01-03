@@ -70,8 +70,10 @@ router.post("/analyze", authenticate, async (req, res) => {
       const client = getGeminiClient();
       const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
       
-      // System instruction
-      const systemInstruction = "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in Russian language.";
+      // System instruction - must be in Content format (object with parts)
+      const systemInstruction = {
+        parts: [{ text: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in the same language as the user." }]
+      };
       
       // Build conversation history for Gemini
       // Gemini requires history to start with 'user' role and alternate user/model
@@ -201,7 +203,7 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
 
     let analysis;
     try {
-      const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in Russian language.\n\n${fileText}`;
+      const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in the same language as the document.\n\n${fileText}`;
       
       const result = await model.generateContent(prompt);
       const response = result.response;
