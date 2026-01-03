@@ -69,12 +69,14 @@ app.get("/api/health-check", (req, res) => {
 /* init db + start */
 initDatabase()
   .then(() => {
-    // Check Gemini API key on startup
-    if (process.env.GEMINI_API_KEY) {
-      const keyPreview = process.env.GEMINI_API_KEY.substring(0, 10) + "...";
-      console.log(`🔑 Gemini API Key loaded: ${keyPreview}`);
+    // Check OpenRouter API key on startup
+    if (process.env.OPENROUTER_API_KEY) {
+      const keyPreview = process.env.OPENROUTER_API_KEY.substring(0, 10) + "...";
+      const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
+      console.log(`🔑 OpenRouter API Key loaded: ${keyPreview}`);
+      console.log(`🤖 Using model: ${model}`);
     } else {
-      console.warn("⚠️  GEMINI_API_KEY not set! AI features will not work.");
+      console.warn("⚠️  OPENROUTER_API_KEY not set! AI features will not work.");
     }
     
     app.listen(PORT, () => {

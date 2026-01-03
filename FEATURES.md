@@ -29,7 +29,7 @@
 5. **ИИ-чат для консультаций** - 💬
    - Анализ симптомов и результатов анализов
    - Рекомендации на основе введенных данных
-   - Интеграция с ChatGPT API (в production)
+   - Интеграция с Google Gemini API (gemini-2.0-flash)
 
 6. **Генерация краткого пересказа для врача** - 📋
    - Автоматическое создание отчета из диалога
@@ -100,7 +100,7 @@ REACT_APP_API_URL=http://localhost:3000/api
 PORT=3000
 TELEGRAM_BOT_TOKEN=your_token_here
 TELEGRAM_BOT_USERNAME=your_bot_username
-OPENAI_API_KEY=your_openai_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 NODE_ENV=development
 ```
 
@@ -168,7 +168,7 @@ NODE_ENV=development
 ### Backend
 - **Node.js / Express** - Сервер
 - **SQLite3** - База данных
-- **OpenAI API** - ИИ консультации (опционально)
+- **Google Gemini API** - ИИ консультации (gemini-2.0-flash)
 - **Telegram Bot API** - Уведомления
 
 ## 🔧 Конфигурация

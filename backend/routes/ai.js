@@ -2,58 +2,51 @@ import express from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from "openai";
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-// Lazy initialization of Gemini client
-let geminiClient = null;
+// Lazy initialization of OpenRouter client
+let openaiClient = null;
 let currentApiKey = null;
 
-function getGeminiClient() {
-  const apiKey = process.env.GEMINI_API_KEY;
+function getOpenRouterClient() {
+  const apiKey = process.env.OPENROUTER_API_KEY;
   
   if (!apiKey) {
-    console.error("❌ GEMINI_API_KEY environment variable is not set");
-    throw new Error("GEMINI_API_KEY environment variable is not set");
+    console.error("❌ OPENROUTER_API_KEY environment variable is not set");
+    throw new Error("OPENROUTER_API_KEY environment variable is not set");
   }
   
   // Reinitialize if API key changed
-  if (!geminiClient || currentApiKey !== apiKey) {
+  if (!openaiClient || currentApiKey !== apiKey) {
     const keyPreview = apiKey.substring(0, 10) + "...";
     if (currentApiKey !== apiKey) {
-      console.log("🔑 Gemini API key changed, reinitializing client:", keyPreview);
+      console.log("🔑 OpenRouter API key changed, reinitializing client:", keyPreview);
     } else {
-      console.log("🔑 Initializing Gemini client with API key:", keyPreview);
+      console.log("🔑 Initializing OpenRouter client with API key:", keyPreview);
     }
-    geminiClient = new GoogleGenerativeAI(apiKey);
+    
+    // OpenRouter uses OpenAI-compatible format
+    openaiClient = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: apiKey,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.OPENROUTER_REFERRER || "https://github.com",
+        "X-Title": "EZ Health App"
+      }
+    });
     currentApiKey = apiKey;
   }
   
-  return geminiClient;
+  return openaiClient;
 }
 
-// Helper function to convert messages to Gemini format
-function formatMessagesForGemini(messages) {
-  // Gemini uses a different format - we need to convert role-based messages
-  // System messages are handled as the first user message with special formatting
-  let geminiMessages = [];
-  let systemInstruction = null;
-  
-  for (const msg of messages) {
-    if (msg.role === 'system') {
-      systemInstruction = msg.content;
-    } else {
-      geminiMessages.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      });
-    }
-  }
-  
-  return { messages: geminiMessages, systemInstruction };
+// Get model name from env or use default free model
+function getModel() {
+  return process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
 }
 
 // POST /api/ai/analyze - Analyze text message
@@ -65,111 +58,76 @@ router.post("/analyze", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Missing message" });
     }
 
-    // Use Gemini API
     try {
-      const client = getGeminiClient();
-      const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const client = getOpenRouterClient();
+      const model = getModel();
       
-      // System instruction - must be in Content format (object with parts)
-      const systemInstruction = {
-        parts: [{ text: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in the same language as the user." }]
-      };
-      
-      // Build conversation history for Gemini
-      // Gemini requires history to start with 'user' role and alternate user/model
-      const historyMessages = [];
-      
-      if (history && Array.isArray(history) && history.length > 0) {
+      // Build messages array
+      const messages = [
+        { 
+          role: "system", 
+          content: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in the same language as the user." 
+        }
+      ];
+
+      // Add history if provided
+      if (history && Array.isArray(history)) {
         for (const h of history) {
           const role = h.role || "user";
           const content = h.content || h.text || "";
           if (content && content.trim()) {
-            historyMessages.push({
-              role: role === "assistant" ? "model" : "user",
-              parts: [{ text: content.trim() }]
+            messages.push({
+              role: role === "assistant" ? "assistant" : "user",
+              content: content.trim()
             });
           }
         }
       }
       
-      // Filter and validate history - must start with 'user' role
-      let validHistory = [];
-      if (historyMessages.length > 0) {
-        // Find first user message index
-        let firstUserIndex = historyMessages.findIndex(msg => msg.role === 'user');
-        
-        if (firstUserIndex >= 0) {
-          // Start from first user message
-          validHistory = historyMessages.slice(firstUserIndex);
-          
-          // Ensure history ends with model response (not user)
-          // If last message is user, remove it (we'll send current message instead)
-          if (validHistory.length > 0 && validHistory[validHistory.length - 1].role === 'user') {
-            validHistory = validHistory.slice(0, -1);
-          }
-        }
-        // If no user message found, validHistory stays empty (start fresh)
-      }
-      
-      // Debug logging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📝 History processing:', {
-          inputHistoryLength: history?.length || 0,
-          processedHistoryLength: historyMessages.length,
-          validHistoryLength: validHistory.length,
-          firstRole: validHistory[0]?.role || 'none'
-        });
-      }
+      // Add current user message
+      messages.push({
+        role: "user",
+        content: message
+      });
 
-      // Start chat with valid history (if any)
-      const chatConfig = {
-        systemInstruction: systemInstruction
-      };
-      
-      // Only add history if it's valid and not empty
-      if (validHistory.length > 0) {
-        chatConfig.history = validHistory;
-      }
+      const completion = await client.chat.completions.create({
+        model: model,
+        messages: messages,
+        temperature: 0.7
+      });
 
-      const chat = model.startChat(chatConfig);
-
-      // Send the current user message
-      const result = await chat.sendMessage(message);
-      const response = result.response;
-      const text = response.text();
-
-      res.json({ response: text });
-    } catch (geminiError) {
-      console.error("Gemini API Error:", geminiError);
-      console.error("Gemini Error Details:", {
-        message: geminiError.message,
-        status: geminiError.status,
-        code: geminiError.code,
-        response: geminiError.response
+      const response = completion.choices[0].message.content;
+      res.json({ response });
+    } catch (openrouterError) {
+      console.error("OpenRouter API Error:", openrouterError);
+      console.error("OpenRouter Error Details:", {
+        message: openrouterError.message,
+        status: openrouterError.status,
+        code: openrouterError.code,
+        response: openrouterError.response?.data
       });
       
       // Check if it's an authentication error
-      if (geminiError.status === 401 || geminiError.status === 403 || geminiError.message?.includes('API key')) {
-        console.error("⚠️ Gemini API Key issue detected!");
+      if (openrouterError.status === 401 || openrouterError.status === 403 || openrouterError.message?.includes('api key')) {
+        console.error("⚠️ OpenRouter API Key issue detected!");
         return res.status(500).json({ 
-          error: "Gemini API authentication failed. Please check API key configuration.",
-          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+          error: "OpenRouter API authentication failed. Please check API key configuration.",
+          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
         });
       }
       
       // Check if it's a quota/rate limit error
-      if (geminiError.status === 429 || geminiError.message?.includes('quota') || geminiError.message?.includes('rate limit')) {
-        console.error("⚠️ Gemini API Quota exceeded!");
+      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit')) {
+        console.error("⚠️ OpenRouter API Quota exceeded!");
         return res.status(500).json({ 
-          error: "Gemini API quota exceeded. Please check your Google Cloud account billing and quotas. The AI service is temporarily unavailable.",
-          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+          error: "OpenRouter API quota exceeded. Please check your account limits. The AI service is temporarily unavailable.",
+          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
         });
       }
       
-      // Fallback to simple response if API fails
       res.status(500).json({ 
         error: "AI service temporarily unavailable. Please try again later.",
-        details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
       });
     }
   } catch (error) {
@@ -197,31 +155,44 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
       return res.status(400).json({ error: "Failed to read file", details: readError.message });
     }
 
-    // Get Gemini client
-    const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Get OpenRouter client
+    const client = getOpenRouterClient();
+    const model = getModel();
 
     let analysis;
     try {
       const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in the same language as the document.\n\n${fileText}`;
       
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      analysis = response.text();
-    } catch (geminiError) {
-      console.error("Gemini API Error in file analysis:", geminiError);
+      const completion = await client.chat.completions.create({
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content: "You are a medical document analyzer. Analyze medical documents and explain results in simple terms."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7
+      });
+      
+      analysis = completion.choices[0].message.content;
+    } catch (openrouterError) {
+      console.error("OpenRouter API Error in file analysis:", openrouterError);
       
       // Check if it's a quota/rate limit error
-      if (geminiError.status === 429 || geminiError.message?.includes('quota') || geminiError.message?.includes('rate limit')) {
-        console.error("⚠️ Gemini API Quota exceeded!");
+      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit')) {
+        console.error("⚠️ OpenRouter API Quota exceeded!");
         return res.status(500).json({ 
-          error: "Gemini API quota exceeded. Please check your Google Cloud account billing and quotas. The AI service is temporarily unavailable.",
-          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+          error: "OpenRouter API quota exceeded. Please check your account limits. The AI service is temporarily unavailable.",
+          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
         });
       }
       
       // Re-throw to be caught by outer catch
-      throw geminiError;
+      throw openrouterError;
     }
 
     // Clean up uploaded file
@@ -264,8 +235,8 @@ router.post("/generate-report", authenticate, async (req, res) => {
       .join("\n");
 
     try {
-      const client = getGeminiClient();
-      const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const client = getOpenRouterClient();
+      const model = getModel();
       
       const prompt = `You are a medical assistant creating a concise summary report for a doctor. 
 Create a structured medical consultation summary in Russian language. 
@@ -276,20 +247,33 @@ Create a medical consultation summary for patient ${userName || "Patient"} based
 
 ${conversation}`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const report = response.text();
+      const completion = await client.chat.completions.create({
+        model: model,
+        messages: [
+          {
+            role: "system",
+            content: "You are a medical assistant creating concise summary reports for doctors."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      });
 
+      const report = completion.choices[0].message.content;
       res.json({ report });
-    } catch (geminiError) {
-      console.error("Gemini API Error:", geminiError);
+    } catch (openrouterError) {
+      console.error("OpenRouter API Error:", openrouterError);
       
       // Check if it's a quota/rate limit error
-      if (geminiError.status === 429 || geminiError.message?.includes('quota') || geminiError.message?.includes('rate limit')) {
-        console.error("⚠️ Gemini API Quota exceeded!");
+      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit')) {
+        console.error("⚠️ OpenRouter API Quota exceeded!");
         return res.status(500).json({ 
-          error: "Gemini API quota exceeded. Please check your Google Cloud account billing and quotas. The AI service is temporarily unavailable.",
-          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+          error: "OpenRouter API quota exceeded. Please check your account limits. The AI service is temporarily unavailable.",
+          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
         });
       }
       
@@ -331,16 +315,29 @@ router.post("/summary", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Missing conversation" });
     }
 
-    const client = getGeminiClient();
-    const model = client.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const client = getOpenRouterClient();
+    const model = getModel();
     
     const prompt = `Create a short structured medical summary for a doctor in Russian language.
 
 ${conversation}`;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const summary = response.text();
+    const completion = await client.chat.completions.create({
+      model: model,
+      messages: [
+        {
+          role: "system",
+          content: "You are a medical assistant creating short structured summaries for doctors."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7
+    });
+
+    const summary = completion.choices[0].message.content;
 
     res.json({
       summary: summary

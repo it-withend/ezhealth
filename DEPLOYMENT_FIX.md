@@ -16,7 +16,7 @@
 - `NODE_ENV=production`
 - `PORT=10000`
 - `TELEGRAM_BOT_TOKEN=ваш_токен`
-- `OPENAI_API_KEY=ваш_ключ` ⚠️ **ВАЖНО: Добавьте этот ключ!**
+- `GEMINI_API_KEY=ваш_ключ` ⚠️ **ВАЖНО: Добавьте этот ключ!**
 
 ### 3. Проверьте логи бэкенда на Render
 1. В Render Dashboard → ваш сервис → Logs
