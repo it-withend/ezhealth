@@ -69,6 +69,14 @@ app.get("/api/health-check", (req, res) => {
 /* init db + start */
 initDatabase()
   .then(() => {
+    // Check OpenAI API key on startup
+    if (process.env.OPENAI_API_KEY) {
+      const keyPreview = process.env.OPENAI_API_KEY.substring(0, 10) + "...";
+      console.log(`🔑 OpenAI API Key loaded: ${keyPreview}`);
+    } else {
+      console.warn("⚠️  OPENAI_API_KEY not set! AI features will not work.");
+    }
+    
     app.listen(PORT, () => {
       console.log(`✅ Server is running on port ${PORT}`);
     });

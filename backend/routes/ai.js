@@ -10,14 +10,28 @@ const upload = multer({ dest: "uploads/" });
 
 // Lazy initialization of OpenAI client
 let openai = null;
+let currentApiKey = null;
 
 function getOpenAIClient() {
-  if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY environment variable is not set");
-    }
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    console.error("❌ OPENAI_API_KEY environment variable is not set");
+    throw new Error("OPENAI_API_KEY environment variable is not set");
   }
+  
+  // Reinitialize if API key changed
+  if (!openai || currentApiKey !== apiKey) {
+    const keyPreview = apiKey.substring(0, 10) + "...";
+    if (currentApiKey !== apiKey) {
+      console.log("🔑 OpenAI API key changed, reinitializing client:", keyPreview);
+    } else {
+      console.log("🔑 Initializing OpenAI client with API key:", keyPreview);
+    }
+    openai = new OpenAI({ apiKey: apiKey });
+    currentApiKey = apiKey;
+  }
+  
   return openai;
 }
 
@@ -59,6 +73,23 @@ router.post("/analyze", authenticate, async (req, res) => {
       res.json({ response });
     } catch (openaiError) {
       console.error("OpenAI API Error:", openaiError);
+      console.error("OpenAI Error Details:", {
+        message: openaiError.message,
+        status: openaiError.status,
+        code: openaiError.code,
+        type: openaiError.type,
+        response: openaiError.response?.data
+      });
+      
+      // Check if it's an authentication error
+      if (openaiError.status === 401 || openaiError.message?.includes('api key')) {
+        console.error("⚠️ OpenAI API Key issue detected!");
+        return res.status(500).json({ 
+          error: "OpenAI API authentication failed. Please check API key configuration.",
+          details: process.env.NODE_ENV === 'development' ? openaiError.message : undefined
+        });
+      }
+      
       // Fallback to simple response if API fails
       res.status(500).json({ 
         error: "AI service temporarily unavailable. Please try again later.",
