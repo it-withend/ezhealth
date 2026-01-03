@@ -106,10 +106,20 @@ export default function Consultation() {
       // #endregion
 
       console.error("AI API error:", error);
-      const errorMessage = error.response?.data?.error || error.message || "Ошибка при обращении к AI";
+      let errorMessage = error.response?.data?.error || error.message || "Ошибка при обращении к AI";
+      
+      // Translate common error messages to Russian
+      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota")) {
+        errorMessage = "Превышен лимит использования AI API. Пожалуйста, проверьте баланс и квоты вашего аккаунта. Сервис временно недоступен.";
+      } else if (errorMessage.includes("authentication failed") || errorMessage.includes("API key")) {
+        errorMessage = "Ошибка аутентификации AI API. Пожалуйста, проверьте настройки API ключа.";
+      } else if (errorMessage.includes("temporarily unavailable")) {
+        errorMessage = "AI сервис временно недоступен. Пожалуйста, попробуйте позже.";
+      }
+      
       const aiMessage = {
         id: Date.now() + 1,
-        text: `Извините, произошла ошибка: ${errorMessage}. Пожалуйста, попробуйте еще раз.`,
+        text: `Извините, произошла ошибка: ${errorMessage}`,
         sender: "ai",
         timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
       };

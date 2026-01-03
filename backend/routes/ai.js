@@ -2,37 +2,58 @@ import express from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-// Lazy initialization of OpenAI client
-let openai = null;
+// Lazy initialization of Gemini client
+let geminiClient = null;
 let currentApiKey = null;
 
-function getOpenAIClient() {
-  const apiKey = process.env.OPENAI_API_KEY;
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
-    console.error("❌ OPENAI_API_KEY environment variable is not set");
-    throw new Error("OPENAI_API_KEY environment variable is not set");
+    console.error("❌ GEMINI_API_KEY environment variable is not set");
+    throw new Error("GEMINI_API_KEY environment variable is not set");
   }
   
   // Reinitialize if API key changed
-  if (!openai || currentApiKey !== apiKey) {
+  if (!geminiClient || currentApiKey !== apiKey) {
     const keyPreview = apiKey.substring(0, 10) + "...";
     if (currentApiKey !== apiKey) {
-      console.log("🔑 OpenAI API key changed, reinitializing client:", keyPreview);
+      console.log("🔑 Gemini API key changed, reinitializing client:", keyPreview);
     } else {
-      console.log("🔑 Initializing OpenAI client with API key:", keyPreview);
+      console.log("🔑 Initializing Gemini client with API key:", keyPreview);
     }
-    openai = new OpenAI({ apiKey: apiKey });
+    geminiClient = new GoogleGenerativeAI(apiKey);
     currentApiKey = apiKey;
   }
   
-  return openai;
+  return geminiClient;
+}
+
+// Helper function to convert messages to Gemini format
+function formatMessagesForGemini(messages) {
+  // Gemini uses a different format - we need to convert role-based messages
+  // System messages are handled as the first user message with special formatting
+  let geminiMessages = [];
+  let systemInstruction = null;
+  
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      systemInstruction = msg.content;
+    } else {
+      geminiMessages.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      });
+    }
+  }
+  
+  return { messages: geminiMessages, systemInstruction };
 }
 
 // POST /api/ai/analyze - Analyze text message
@@ -44,56 +65,80 @@ router.post("/analyze", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Missing message" });
     }
 
-    // Use actual OpenAI API
+    // Use Gemini API
     try {
-      const openaiClient = getOpenAIClient();
+      const client = getGeminiClient();
+      const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
       
-      const messages = [
-        { 
-          role: "system", 
-          content: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals." 
-        },
-        { role: "user", content: message }
-      ];
-
+      // Build conversation history
+      const messages = [];
+      
+      // System instruction
+      const systemInstruction = "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in Russian language.";
+      
       // Add history if provided
       if (history && Array.isArray(history)) {
-        messages.splice(1, 0, ...history.map(h => ({
-          role: h.role || "user",
-          content: h.content || h.text || ""
-        })));
+        for (const h of history) {
+          const role = h.role || "user";
+          const content = h.content || h.text || "";
+          if (content) {
+            messages.push({
+              role: role === "assistant" ? "model" : "user",
+              parts: [{ text: content }]
+            });
+          }
+        }
       }
-
-      const completion = await openaiClient.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: messages
+      
+      // Add current user message
+      messages.push({
+        role: "user",
+        parts: [{ text: message }]
       });
 
-      const response = completion.choices[0].message.content;
-      res.json({ response });
-    } catch (openaiError) {
-      console.error("OpenAI API Error:", openaiError);
-      console.error("OpenAI Error Details:", {
-        message: openaiError.message,
-        status: openaiError.status,
-        code: openaiError.code,
-        type: openaiError.type,
-        response: openaiError.response?.data
+      // Start chat with history
+      const chat = model.startChat({
+        history: messages.slice(0, -1), // All except the last message
+        systemInstruction: systemInstruction
+      });
+
+      // Send the last message
+      const result = await chat.sendMessage(messages[messages.length - 1].parts[0].text);
+      const response = result.response;
+      const text = response.text();
+
+      res.json({ response: text });
+    } catch (geminiError) {
+      console.error("Gemini API Error:", geminiError);
+      console.error("Gemini Error Details:", {
+        message: geminiError.message,
+        status: geminiError.status,
+        code: geminiError.code,
+        response: geminiError.response
       });
       
       // Check if it's an authentication error
-      if (openaiError.status === 401 || openaiError.message?.includes('api key')) {
-        console.error("⚠️ OpenAI API Key issue detected!");
+      if (geminiError.status === 401 || geminiError.status === 403 || geminiError.message?.includes('API key')) {
+        console.error("⚠️ Gemini API Key issue detected!");
         return res.status(500).json({ 
-          error: "OpenAI API authentication failed. Please check API key configuration.",
-          details: process.env.NODE_ENV === 'development' ? openaiError.message : undefined
+          error: "Gemini API authentication failed. Please check API key configuration.",
+          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+        });
+      }
+      
+      // Check if it's a quota/rate limit error
+      if (geminiError.status === 429 || geminiError.message?.includes('quota') || geminiError.message?.includes('rate limit')) {
+        console.error("⚠️ Gemini API Quota exceeded!");
+        return res.status(500).json({ 
+          error: "Gemini API quota exceeded. Please check your Google Cloud account billing and quotas. The AI service is temporarily unavailable.",
+          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
         });
       }
       
       // Fallback to simple response if API fails
       res.status(500).json({ 
         error: "AI service temporarily unavailable. Please try again later.",
-        details: process.env.NODE_ENV === 'development' ? openaiError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
       });
     }
   } catch (error) {
@@ -121,21 +166,32 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
       return res.status(400).json({ error: "Failed to read file", details: readError.message });
     }
 
-    // Get OpenAI client
-    const openaiClient = getOpenAIClient();
+    // Get Gemini client
+    const client = getGeminiClient();
+    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const completion = await openaiClient.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Analyze the medical document. Explain results simply. Highlight risks."
-        },
-        { role: "user", content: fileText }
-      ]
-    });
-
-    const analysis = completion.choices[0].message.content;
+    let analysis;
+    try {
+      const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in Russian language.\n\n${fileText}`;
+      
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      analysis = response.text();
+    } catch (geminiError) {
+      console.error("Gemini API Error in file analysis:", geminiError);
+      
+      // Check if it's a quota/rate limit error
+      if (geminiError.status === 429 || geminiError.message?.includes('quota') || geminiError.message?.includes('rate limit')) {
+        console.error("⚠️ Gemini API Quota exceeded!");
+        return res.status(500).json({ 
+          error: "Gemini API quota exceeded. Please check your Google Cloud account billing and quotas. The AI service is temporarily unavailable.",
+          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+        });
+      }
+      
+      // Re-throw to be caught by outer catch
+      throw geminiError;
+    }
 
     // Clean up uploaded file
     try {
@@ -177,30 +233,35 @@ router.post("/generate-report", authenticate, async (req, res) => {
       .join("\n");
 
     try {
-      const openaiClient = getOpenAIClient();
-      const completion = await openaiClient.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `You are a medical assistant creating a concise summary report for a doctor. 
-            Create a structured medical consultation summary in Russian language. 
-            Include: patient information, main complaints/symptoms, conversation summary, 
-            and recommendations. Keep it professional and concise.`
-          },
-          {
-            role: "user",
-            content: `Create a medical consultation summary for patient ${userName || "Patient"} based on this conversation:\n\n${conversation}`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      });
+      const client = getGeminiClient();
+      const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+      
+      const prompt = `You are a medical assistant creating a concise summary report for a doctor. 
+Create a structured medical consultation summary in Russian language. 
+Include: patient information, main complaints/symptoms, conversation summary, 
+and recommendations. Keep it professional and concise.
 
-      const report = completion.choices[0].message.content;
+Create a medical consultation summary for patient ${userName || "Patient"} based on this conversation:
+
+${conversation}`;
+
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const report = response.text();
+
       res.json({ report });
-    } catch (openaiError) {
-      console.error("OpenAI API Error:", openaiError);
+    } catch (geminiError) {
+      console.error("Gemini API Error:", geminiError);
+      
+      // Check if it's a quota/rate limit error
+      if (geminiError.status === 429 || geminiError.message?.includes('quota') || geminiError.message?.includes('rate limit')) {
+        console.error("⚠️ Gemini API Quota exceeded!");
+        return res.status(500).json({ 
+          error: "Gemini API quota exceeded. Please check your Google Cloud account billing and quotas. The AI service is temporarily unavailable.",
+          details: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+        });
+      }
+      
       // Fallback to simple report
       const simpleReport = `
 СВОДКА МЕДИЦИНСКОЙ КОНСУЛЬТАЦИИ
@@ -239,20 +300,19 @@ router.post("/summary", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Missing conversation" });
     }
 
-    const openaiClient = getOpenAIClient();
-    const completion = await openaiClient.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Create a short structured medical summary for a doctor."
-        },
-        { role: "user", content: conversation }
-      ]
-    });
+    const client = getGeminiClient();
+    const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    const prompt = `Create a short structured medical summary for a doctor in Russian language.
+
+${conversation}`;
+
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const summary = response.text();
 
     res.json({
-      summary: completion.choices[0].message.content
+      summary: summary
     });
   } catch (error) {
     console.error("Summary error:", error);

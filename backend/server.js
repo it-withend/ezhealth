@@ -69,12 +69,12 @@ app.get("/api/health-check", (req, res) => {
 /* init db + start */
 initDatabase()
   .then(() => {
-    // Check OpenAI API key on startup
-    if (process.env.OPENAI_API_KEY) {
-      const keyPreview = process.env.OPENAI_API_KEY.substring(0, 10) + "...";
-      console.log(`🔑 OpenAI API Key loaded: ${keyPreview}`);
+    // Check Gemini API key on startup
+    if (process.env.GEMINI_API_KEY) {
+      const keyPreview = process.env.GEMINI_API_KEY.substring(0, 10) + "...";
+      console.log(`🔑 Gemini API Key loaded: ${keyPreview}`);
     } else {
-      console.warn("⚠️  OPENAI_API_KEY not set! AI features will not work.");
+      console.warn("⚠️  GEMINI_API_KEY not set! AI features will not work.");
     }
     
     app.listen(PORT, () => {

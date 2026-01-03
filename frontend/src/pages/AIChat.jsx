@@ -108,10 +108,20 @@ export default function AIChat() {
       // #endregion
 
       console.error("Error:", error);
-      const errorMessage = error.response?.data?.error || error.message || "Unknown error";
+      let errorMessage = error.response?.data?.error || error.message || "Unknown error";
+      
+      // Translate common error messages to Russian
+      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota")) {
+        errorMessage = "Превышен лимит использования AI API. Пожалуйста, проверьте баланс и квоты вашего аккаунта. Сервис временно недоступен.";
+      } else if (errorMessage.includes("authentication failed") || errorMessage.includes("API key")) {
+        errorMessage = "Ошибка аутентификации AI API. Пожалуйста, проверьте настройки API ключа.";
+      } else if (errorMessage.includes("temporarily unavailable")) {
+        errorMessage = "AI сервис временно недоступен. Пожалуйста, попробуйте позже.";
+      }
+      
       const botMessage = {
         id: messages.length + 2,
-        text: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
+        text: `Извините, произошла ошибка: ${errorMessage}`,
         sender: "bot",
         timestamp: new Date()
       };
@@ -152,7 +162,15 @@ export default function AIChat() {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("File upload error:", error);
-      const errorMessage = error.response?.data?.error || error.message || "Ошибка при анализе файла";
+      let errorMessage = error.response?.data?.error || error.message || "Ошибка при анализе файла";
+      
+      // Translate common error messages
+      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota")) {
+        errorMessage = "Превышен лимит использования AI API. Пожалуйста, проверьте баланс и квоты вашего аккаунта.";
+      } else if (errorMessage.includes("authentication failed") || errorMessage.includes("API key")) {
+        errorMessage = "Ошибка аутентификации AI API. Пожалуйста, проверьте настройки API ключа.";
+      }
+      
       const botMessage = {
         id: messages.length + 2,
         text: `Ошибка: ${errorMessage}`,
