@@ -70,40 +70,69 @@ router.post("/analyze", authenticate, async (req, res) => {
       const client = getGeminiClient();
       const model = client.getGenerativeModel({ model: "gemini-1.5-flash" });
       
-      // Build conversation history
-      const messages = [];
-      
       // System instruction
       const systemInstruction = "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in Russian language.";
       
-      // Add history if provided
-      if (history && Array.isArray(history)) {
+      // Build conversation history for Gemini
+      // Gemini requires history to start with 'user' role and alternate user/model
+      const historyMessages = [];
+      
+      if (history && Array.isArray(history) && history.length > 0) {
         for (const h of history) {
           const role = h.role || "user";
           const content = h.content || h.text || "";
-          if (content) {
-            messages.push({
+          if (content && content.trim()) {
+            historyMessages.push({
               role: role === "assistant" ? "model" : "user",
-              parts: [{ text: content }]
+              parts: [{ text: content.trim() }]
             });
           }
         }
       }
       
-      // Add current user message
-      messages.push({
-        role: "user",
-        parts: [{ text: message }]
-      });
+      // Filter and validate history - must start with 'user' role
+      let validHistory = [];
+      if (historyMessages.length > 0) {
+        // Find first user message index
+        let firstUserIndex = historyMessages.findIndex(msg => msg.role === 'user');
+        
+        if (firstUserIndex >= 0) {
+          // Start from first user message
+          validHistory = historyMessages.slice(firstUserIndex);
+          
+          // Ensure history ends with model response (not user)
+          // If last message is user, remove it (we'll send current message instead)
+          if (validHistory.length > 0 && validHistory[validHistory.length - 1].role === 'user') {
+            validHistory = validHistory.slice(0, -1);
+          }
+        }
+        // If no user message found, validHistory stays empty (start fresh)
+      }
+      
+      // Debug logging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📝 History processing:', {
+          inputHistoryLength: history?.length || 0,
+          processedHistoryLength: historyMessages.length,
+          validHistoryLength: validHistory.length,
+          firstRole: validHistory[0]?.role || 'none'
+        });
+      }
 
-      // Start chat with history
-      const chat = model.startChat({
-        history: messages.slice(0, -1), // All except the last message
+      // Start chat with valid history (if any)
+      const chatConfig = {
         systemInstruction: systemInstruction
-      });
+      };
+      
+      // Only add history if it's valid and not empty
+      if (validHistory.length > 0) {
+        chatConfig.history = validHistory;
+      }
 
-      // Send the last message
-      const result = await chat.sendMessage(messages[messages.length - 1].parts[0].text);
+      const chat = model.startChat(chatConfig);
+
+      // Send the current user message
+      const result = await chat.sendMessage(message);
       const response = result.response;
       const text = response.text();
 
