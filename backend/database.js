@@ -202,36 +202,33 @@ export function initDatabase() {
                         }
 
                         // Create indexes
-                      database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
-                        if (err) {
-                          console.error('Error creating index:', err);
-                          reject(err);
-                          return;
-                        }
-
-                        database.run(`CREATE INDEX IF NOT EXISTS idx_analyses_user_date ON medical_analyses(user_id, date)`, (err) => {
+                        database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
                           if (err) {
                             console.error('Error creating index:', err);
                             reject(err);
                             return;
                           }
-
-                          database.run(`CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id, is_active)`, (err) => {
+                          database.run(`CREATE INDEX IF NOT EXISTS idx_analyses_user_date ON medical_analyses(user_id, date)`, (err) => {
                             if (err) {
                               console.error('Error creating index:', err);
                               reject(err);
                               return;
                             }
-
-                            database.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_date ON ai_chat_history(user_id, created_at)`, (err) => {
+                            database.run(`CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id, is_active)`, (err) => {
                               if (err) {
                                 console.error('Error creating index:', err);
                                 reject(err);
                                 return;
                               }
-
-                              console.log('Database initialized');
-                              resolve();
+                              database.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_date ON ai_chat_history(user_id, created_at)`, (err) => {
+                                if (err) {
+                                  console.error('Error creating index:', err);
+                                  reject(err);
+                                  return;
+                                }
+                                console.log('Database initialized');
+                                resolve();
+                              });
                             });
                           });
                         });
