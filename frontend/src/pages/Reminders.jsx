@@ -80,19 +80,22 @@ export default function Reminders() {
     }
 
     try {
-      await api.post("/reminders", {
+      console.log("Adding reminder:", newReminder);
+      const response = await api.post("/reminders", {
         type: newReminder.type,
         name: newReminder.title,
         reminderTime: newReminder.time,
         frequency: newReminder.frequency,
         dosage: newReminder.dosage || undefined
       });
+      console.log("Reminder added:", response.data);
       setNewReminder({ type: "medication", title: "", time: "09:00", frequency: "Daily", dosage: "" });
       setShowAddForm(false);
-      loadReminders();
+      await loadReminders(); // Reload reminders after adding
     } catch (error) {
       console.error("Error adding reminder:", error);
-      alert(t("reminders.errorAdding"));
+      console.error("Error details:", error.response?.data);
+      alert(t("reminders.errorAdding") + ": " + (error.response?.data?.error || error.message));
     }
   };
 

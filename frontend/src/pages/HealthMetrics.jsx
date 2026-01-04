@@ -134,8 +134,9 @@ export default function HealthMetrics() {
     // #endregion
 
     try {
+      // Load more metrics to get latest values for all types
       const response = await api.get("/health/metrics", {
-        params: { limit: 1, days: 1 }
+        params: { limit: 100, days: 30 }
       });
       
       // #region agent log
@@ -155,6 +156,7 @@ export default function HealthMetrics() {
       // #endregion
       
       const allMetrics = response.data.metrics || [];
+      console.log("Loaded metrics:", allMetrics);
       
       // Get latest values for each metric type
       const latestValues = {};
@@ -164,17 +166,27 @@ export default function HealthMetrics() {
         }
       });
 
+      console.log("Latest values:", latestValues);
+
       // Update metrics with latest values
       setMetrics(prev => prev.map(m => {
         const latest = latestValues[m.id];
         if (latest) {
           let current = latest.value;
-          if (m.id === "pressure" && latestValues.systolic && latestValues.diastolic) {
-            current = `${latestValues.systolic.value}/${latestValues.diastolic.value}`;
+          if (m.id === "pressure") {
+            // For pressure, check for systolic and diastolic separately
+            const systolic = latestValues.systolic;
+            const diastolic = latestValues.diastolic;
+            if (systolic && diastolic) {
+              current = `${systolic.value}/${diastolic.value}`;
+            } else if (latest.type === "systolic" || latest.type === "diastolic") {
+              // If only one part is available, show it
+              current = latest.value;
+            }
           }
           return { ...m, current };
         }
-        return m;
+        return { ...m, current: m.id === "pressure" ? "-" : 0 };
       }));
     } catch (error) {
       // #region agent log
@@ -273,8 +285,9 @@ export default function HealthMetrics() {
       
       setFormData({ type: "pulse", value: "", unit: "", notes: "" });
       setShowAddForm(false);
-      loadMetrics();
-      loadChartData();
+      // Reload data after adding
+      await loadMetrics();
+      await loadChartData();
     } catch (error) {
       console.error("Error adding metric:", error);
       alert(t("common.error"));

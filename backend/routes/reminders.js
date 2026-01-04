@@ -62,8 +62,12 @@ router.get('/', async (req, res) => {
 // Create new reminder (medication or habit)
 router.post('/', async (req, res) => {
   try {
-    const { type, name, dosage, frequency, reminderTime } = req.body;
+    // Support both reminderTime and reminder_time for compatibility
+    const { type, name, dosage, frequency, reminderTime, reminder_time } = req.body;
     const userId = req.userId;
+    const time = reminderTime || reminder_time;
+    
+    console.log(`📝 Creating reminder: type=${type}, name=${name}, time=${time}, userId=${userId}`);
     
     if (!name || !type) {
       return res.status(400).json({ error: 'name and type are required' });
@@ -73,19 +77,22 @@ router.post('/', async (req, res) => {
       const result = await dbRun(
         `INSERT INTO medications (user_id, name, dosage, frequency, reminder_time) 
          VALUES (?, ?, ?, ?, ?)`,
-        [userId, name, dosage || null, frequency || null, reminderTime || null]
+        [userId, name, dosage || null, frequency || null, time || null]
       );
+      console.log(`✅ Medication reminder created: ID=${result.lastID}`);
       res.status(201).json({ id: result.lastID, message: 'Medication reminder created', reminder_type: 'medication' });
     } else {
       // Habit (water, vitamin, walk, etc.)
       const result = await dbRun(
         `INSERT INTO habits (user_id, type, name, reminder_time, frequency) 
          VALUES (?, ?, ?, ?, ?)`,
-        [userId, type, name, reminderTime || null, frequency || null]
+        [userId, type, name, time || null, frequency || null]
       );
+      console.log(`✅ Habit reminder created: ID=${result.lastID}`);
       res.status(201).json({ id: result.lastID, message: 'Habit reminder created', reminder_type: 'habit' });
     }
   } catch (error) {
+    console.error('Error creating reminder:', error);
     res.status(500).json({ error: error.message });
   }
 });

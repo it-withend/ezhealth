@@ -7,7 +7,7 @@ const router = express.Router();
 // Get user profile
 router.get('/profile', authenticate, async (req, res) => {
   try {
-    const userId = req.userId; // From authentication middleware
+    const userId = req.userId;
 
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
     
@@ -17,18 +17,58 @@ router.get('/profile', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      user: {
+      profile: {
         id: user.id,
+        name: user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'User',
+        email: user.email || '',
+        phone: user.phone || '',
+        dateOfBirth: user.date_of_birth || '',
+        bloodType: user.blood_type || '',
+        allergies: user.allergies || '',
+        medicalConditions: user.medical_conditions || '',
         telegram_id: user.telegram_id,
         first_name: user.first_name,
         last_name: user.last_name,
         username: user.username,
-        photo_url: user.photo_url,
-        created_at: user.created_at
+        photo_url: user.photo_url
       }
     });
   } catch (error) {
     console.error('Get profile error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update user profile
+router.put('/profile', authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { name, email, phone, dateOfBirth, bloodType, allergies, medicalConditions } = req.body;
+
+    // Parse name into first_name and last_name
+    const nameParts = (name || '').trim().split(' ');
+    const first_name = nameParts[0] || null;
+    const last_name = nameParts.slice(1).join(' ') || null;
+
+    await dbRun(
+      `UPDATE users SET 
+        first_name = COALESCE(?, first_name),
+        last_name = COALESCE(?, last_name),
+        email = COALESCE(?, email),
+        phone = COALESCE(?, phone),
+        date_of_birth = COALESCE(?, date_of_birth),
+        blood_type = COALESCE(?, blood_type),
+        allergies = COALESCE(?, allergies),
+        medical_conditions = COALESCE(?, medical_conditions),
+        updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [first_name, last_name, email, phone, dateOfBirth, bloodType, allergies, medicalConditions, userId]
+    );
+
+    console.log(`✅ Profile updated for user ${userId}`);
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -213,6 +213,8 @@ router.get("/history", authenticate, async (req, res) => {
     const userId = req.userId;
     const limit = parseInt(req.query.limit) || 50; // Get last 50 messages by default
 
+    console.log(`📜 Loading chat history for user ${userId}, limit: ${limit}`);
+
     const history = await dbAll(
       `SELECT id, role, content, created_at 
        FROM ai_chat_history 
@@ -221,6 +223,8 @@ router.get("/history", authenticate, async (req, res) => {
        LIMIT ?`,
       [userId, limit]
     );
+
+    console.log(`✅ Found ${history.length} messages in history`);
 
     // Reverse to get chronological order
     const reversedHistory = history.reverse().map(msg => ({
@@ -290,16 +294,28 @@ CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix language
       const aiResponse = result.response;
 
       // Save user message to database
-      await dbRun(
-        `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
-        [userId, 'user', message]
-      );
+      try {
+        await dbRun(
+          `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
+          [userId, 'user', message]
+        );
+        console.log(`💾 Saved user message to history for user ${userId}`);
+      } catch (dbError) {
+        console.error("Error saving user message to history:", dbError);
+        // Don't fail the request if history save fails
+      }
 
       // Save AI response to database
-      await dbRun(
-        `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
-        [userId, 'assistant', aiResponse]
-      );
+      try {
+        await dbRun(
+          `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
+          [userId, 'assistant', aiResponse]
+        );
+        console.log(`💾 Saved AI response to history for user ${userId}`);
+      } catch (dbError) {
+        console.error("Error saving AI response to history:", dbError);
+        // Don't fail the request if history save fails
+      }
 
       res.json({ response: aiResponse });
     } catch (poeError) {

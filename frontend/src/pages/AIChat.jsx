@@ -35,17 +35,22 @@ export default function AIChat() {
 
   const loadChatHistory = async () => {
     try {
+      console.log("Loading chat history...");
       const response = await api.get("/ai/history");
+      console.log("Chat history response:", response.data);
+      
       if (response.data.history && response.data.history.length > 0) {
         const loadedMessages = response.data.history.map((msg, index) => ({
           id: msg.id || index + 1,
           text: msg.content,
           sender: msg.role === "assistant" ? "bot" : "user",
-          timestamp: new Date(msg.timestamp || Date.now())
+          timestamp: new Date(msg.timestamp || msg.created_at || Date.now())
         }));
+        console.log(`Loaded ${loadedMessages.length} messages from history`);
         setMessages(loadedMessages);
       } else {
         // No history, show initial message
+        console.log("No chat history found, showing initial message");
         setMessages([{
           id: 1,
           text: t("aiChat.initialMessage"),
@@ -55,6 +60,7 @@ export default function AIChat() {
       }
     } catch (error) {
       console.error("Error loading chat history:", error);
+      console.error("Error details:", error.response?.data);
       // On error, show initial message
       setMessages([{
         id: 1,

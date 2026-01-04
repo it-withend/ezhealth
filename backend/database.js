@@ -44,6 +44,12 @@ export function initDatabase() {
           last_name TEXT,
           username TEXT,
           photo_url TEXT,
+          email TEXT,
+          phone TEXT,
+          date_of_birth TEXT,
+          blood_type TEXT,
+          allergies TEXT,
+          medical_conditions TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )

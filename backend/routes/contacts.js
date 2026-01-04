@@ -11,13 +11,17 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const userId = req.userId; // From authentication middleware
+    console.log(`📋 Loading trusted contacts for user ${userId}`);
 
     const contacts = await dbAll(
       `SELECT * FROM trusted_contacts WHERE user_id = ? ORDER BY created_at DESC`,
       [userId]
     );
+    
+    console.log(`✅ Found ${contacts.length} contacts for user ${userId}`);
     res.json(contacts);
   } catch (error) {
+    console.error("Error loading contacts:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -115,9 +119,9 @@ router.post('/share', async (req, res) => {
 
     // In production, send data via Telegram Bot API
     // For now, just log
-    console.log(`Sharing ${dataType} (ID: ${dataId}) with ${targetContacts.length} contacts`);
+    console.log(`📤 Sharing ${dataType} (ID: ${dataId || 'all'}) with ${targetContacts.length} contacts for user ${userId}`);
     targetContacts.forEach(contact => {
-      console.log(`  - Contact: ${contact.contact_name || contact.contact_telegram_id}`);
+      console.log(`  - Contact: ${contact.contact_name || contact.contact_telegram_id} (ID: ${contact.id})`);
     });
 
     res.json({

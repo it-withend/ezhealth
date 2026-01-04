@@ -39,44 +39,90 @@ export default function Profile() {
     try {
       setLoadingContacts(true);
       const response = await api.get("/contacts");
-      const contacts = response.data.map(c => ({
+      console.log("Contacts API response:", response.data);
+      
+      // Handle both array and object responses
+      const contactsData = Array.isArray(response.data) ? response.data : (response.data.contacts || []);
+      
+      const contacts = contactsData.map(c => ({
         id: c.id,
         name: c.contact_name || `@${c.contact_telegram_id}`,
         telegram: c.contact_telegram_id,
-        canViewData: c.can_view_health_data === 1,
-        canAlert: c.can_receive_alerts === 1
+        canViewData: c.can_view_health_data === 1 || c.can_view_health_data === true,
+        canAlert: c.can_receive_alerts === 1 || c.can_receive_alerts === true
       }));
+      
+      console.log("Processed contacts:", contacts);
       setTrustedContacts(contacts);
     } catch (error) {
       console.error("Error loading contacts:", error);
+      console.error("Error details:", error.response?.data);
+      setTrustedContacts([]); // Set empty array on error
     } finally {
       setLoadingContacts(false);
     }
   };
 
-  // Load data from localStorage on mount
+  // Load profile from backend on mount
   useEffect(() => {
-    const savedProfile = localStorage.getItem("userProfile");
-    
-    if (savedProfile) {
-      try {
-        const parsed = JSON.parse(savedProfile);
-        setProfile(parsed);
-        setFormData(parsed);
-      } catch (e) {
-        console.error("Failed to load profile");
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    if (!user) return;
+    try {
+      const response = await api.get("/user/profile");
+      if (response.data.profile) {
+        const profileData = response.data.profile;
+        const loadedProfile = {
+          name: profileData.name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || "User",
+          email: profileData.email || "",
+          phone: profileData.phone || "",
+          dateOfBirth: profileData.dateOfBirth || "",
+          bloodType: profileData.bloodType || "",
+          allergies: profileData.allergies || "",
+          medicalConditions: profileData.medicalConditions || ""
+        };
+        setProfile(loadedProfile);
+        setFormData(loadedProfile);
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      // Fallback to localStorage if API fails
+      const savedProfile = localStorage.getItem("userProfile");
+      if (savedProfile) {
+        try {
+          const parsed = JSON.parse(savedProfile);
+          setProfile(parsed);
+          setFormData(parsed);
+        } catch (e) {
+          console.error("Failed to load profile from localStorage");
+        }
       }
     }
-  }, []);
+  };
 
-  // Save profile to localStorage
-  useEffect(() => {
-    localStorage.setItem("userProfile", JSON.stringify(profile));
-  }, [profile]);
-
-  const handleSaveProfile = () => {
-    setProfile(formData);
-    setIsEditing(false);
+  const handleSaveProfile = async () => {
+    try {
+      await api.put("/user/profile", {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth,
+        bloodType: formData.bloodType,
+        allergies: formData.allergies,
+        medicalConditions: formData.medicalConditions
+      });
+      setProfile(formData);
+      setIsEditing(false);
+      // Also save to localStorage as backup
+      localStorage.setItem("userProfile", JSON.stringify(formData));
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
+    }
   };
 
   const handleAddContact = async () => {
@@ -95,15 +141,20 @@ export default function Profile() {
       const numericId = parseInt(telegramId);
       const finalTelegramId = isNaN(numericId) ? telegramId : numericId;
 
-      await api.post("/contacts", {
+      console.log("Adding contact:", { finalTelegramId, name: newContact.name });
+      const response = await api.post("/contacts", {
         contactTelegramId: finalTelegramId,
         contactName: newContact.name,
         canViewHealthData: newContact.canViewData,
         canReceiveAlerts: newContact.canReceiveAlerts
       });
+      console.log("Contact added response:", response.data);
       setNewContact({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
       setShowAddContact(false);
-      await loadTrustedContacts(); // Reload contacts
+      // Wait a bit and reload contacts
+      setTimeout(() => {
+        loadTrustedContacts();
+      }, 500);
     } catch (error) {
       console.error("Error adding contact:", error);
       const errorMsg = error.response?.data?.error || error.message || t("profile.errorAddingContact");
