@@ -99,7 +99,7 @@ export function initDatabase() {
               CREATE TABLE IF NOT EXISTS trusted_contacts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                contact_telegram_id INTEGER NOT NULL,
+                contact_telegram_id TEXT NOT NULL,
                 contact_name TEXT,
                 can_view_health_data BOOLEAN DEFAULT 1,
                 can_receive_alerts BOOLEAN DEFAULT 1,
@@ -184,7 +184,24 @@ export function initDatabase() {
                         return;
                       }
 
-                      // Create indexes
+                      // AI chat history table
+                      database.run(`
+                        CREATE TABLE IF NOT EXISTS ai_chat_history (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          user_id INTEGER NOT NULL,
+                          role TEXT NOT NULL,
+                          content TEXT NOT NULL,
+                          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                        )
+                      `, (err) => {
+                        if (err) {
+                          console.error('Error creating ai_chat_history table:', err);
+                          reject(err);
+                          return;
+                        }
+
+                        // Create indexes
                       database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
                         if (err) {
                           console.error('Error creating index:', err);
@@ -206,8 +223,16 @@ export function initDatabase() {
                               return;
                             }
 
-                            console.log('Database initialized');
-                            resolve();
+                            database.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_date ON ai_chat_history(user_id, created_at)`, (err) => {
+                              if (err) {
+                                console.error('Error creating index:', err);
+                                reject(err);
+                                return;
+                              }
+
+                              console.log('Database initialized');
+                              resolve();
+                            });
                           });
                         });
                       });

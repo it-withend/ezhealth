@@ -32,13 +32,34 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'contactTelegramId is required' });
     }
 
+    // Store contactTelegramId as string (can be numeric ID or username)
+    // Remove @ if present
+    const telegramId = String(contactTelegramId).replace(/^@/, '').trim();
+
+    // Check if contact already exists
+    const existing = await dbGet(
+      `SELECT * FROM trusted_contacts WHERE user_id = ? AND contact_telegram_id = ?`,
+      [userId, telegramId]
+    );
+
+    if (existing) {
+      return res.status(400).json({ error: 'Contact already exists' });
+    }
+
     const result = await dbRun(
       `INSERT INTO trusted_contacts (user_id, contact_telegram_id, contact_name, can_view_health_data, can_receive_alerts) 
        VALUES (?, ?, ?, ?, ?)`,
-      [userId, contactTelegramId, contactName, canViewHealthData ? 1 : 0, canReceiveAlerts ? 1 : 0]
+      [userId, telegramId, contactName || null, canViewHealthData ? 1 : 0, canReceiveAlerts ? 1 : 0]
     );
-    res.status(201).json({ id: result.lastID, message: 'Contact added' });
+    
+    console.log(`✅ Trusted contact added: ${contactName} (${telegramId}) for user ${userId}`);
+    res.status(201).json({ id: result.lastID, message: 'Contact added successfully' });
   } catch (error) {
+    console.error('Error adding contact:', error);
+    // Check for unique constraint violation
+    if (error.message.includes('UNIQUE constraint')) {
+      return res.status(400).json({ error: 'This contact is already in your trusted contacts list' });
+    }
     res.status(500).json({ error: error.message });
   }
 });

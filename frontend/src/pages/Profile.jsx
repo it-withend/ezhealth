@@ -86,18 +86,28 @@ export default function Profile() {
     }
 
     try {
+      // Extract telegram ID - can be username or numeric ID
+      let telegramId = newContact.telegram.replace("@", "").trim();
+      
+      // If it's a username (not numeric), we need to convert it
+      // For now, we'll try to parse as number, if it fails, we'll use the string
+      // In production, you'd need to resolve username to telegram_id via Bot API
+      const numericId = parseInt(telegramId);
+      const finalTelegramId = isNaN(numericId) ? telegramId : numericId;
+
       await api.post("/contacts", {
-        contactTelegramId: newContact.telegram.replace("@", ""),
+        contactTelegramId: finalTelegramId,
         contactName: newContact.name,
         canViewHealthData: newContact.canViewData,
         canReceiveAlerts: newContact.canReceiveAlerts
       });
       setNewContact({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
       setShowAddContact(false);
-      loadTrustedContacts();
+      await loadTrustedContacts(); // Reload contacts
     } catch (error) {
       console.error("Error adding contact:", error);
-      alert(t("profile.errorAddingContact"));
+      const errorMsg = error.response?.data?.error || error.message || t("profile.errorAddingContact");
+      alert(errorMsg);
     }
   };
 

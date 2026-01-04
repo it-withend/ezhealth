@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import OpenAI from "openai";
 import { authenticate } from '../middleware/auth.js';
+import { dbRun, dbAll } from '../database.js';
 
 // Helper to get file extension
 function getFileExtension(filename) {
@@ -206,6 +207,36 @@ async function tryWithFallback(client, messages, systemMessage = null) {
   throw lastError;
 }
 
+// GET /api/ai/history - Get chat history
+router.get("/history", authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const limit = parseInt(req.query.limit) || 50; // Get last 50 messages by default
+
+    const history = await dbAll(
+      `SELECT id, role, content, created_at 
+       FROM ai_chat_history 
+       WHERE user_id = ? 
+       ORDER BY created_at DESC 
+       LIMIT ?`,
+      [userId, limit]
+    );
+
+    // Reverse to get chronological order
+    const reversedHistory = history.reverse().map(msg => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.created_at
+    }));
+
+    res.json({ history: reversedHistory });
+  } catch (error) {
+    console.error("Error loading chat history:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/ai/analyze - Analyze text message
 router.post("/analyze", authenticate, async (req, res) => {
   try {
@@ -255,7 +286,22 @@ CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix language
         systemPrompt
       );
 
-      res.json({ response: result.response });
+      const userId = req.userId;
+      const aiResponse = result.response;
+
+      // Save user message to database
+      await dbRun(
+        `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
+        [userId, 'user', message]
+      );
+
+      // Save AI response to database
+      await dbRun(
+        `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
+        [userId, 'assistant', aiResponse]
+      );
+
+      res.json({ response: aiResponse });
     } catch (poeError) {
       console.error("Poe API Error:", poeError);
       console.error("Poe Error Details:", {

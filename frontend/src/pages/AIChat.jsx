@@ -28,9 +28,46 @@ export default function AIChat() {
     scrollToBottom();
   }, [messages]);
 
-  // Update initial message when language changes
+  // Load chat history from backend on mount
   useEffect(() => {
-    if (messages.length === 1 && messages[0].sender === "bot") {
+    loadChatHistory();
+  }, []);
+
+  const loadChatHistory = async () => {
+    try {
+      const response = await api.get("/ai/history");
+      if (response.data.history && response.data.history.length > 0) {
+        const loadedMessages = response.data.history.map((msg, index) => ({
+          id: msg.id || index + 1,
+          text: msg.content,
+          sender: msg.role === "assistant" ? "bot" : "user",
+          timestamp: new Date(msg.timestamp || Date.now())
+        }));
+        setMessages(loadedMessages);
+      } else {
+        // No history, show initial message
+        setMessages([{
+          id: 1,
+          text: t("aiChat.initialMessage"),
+          sender: "bot",
+          timestamp: new Date()
+        }]);
+      }
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      // On error, show initial message
+      setMessages([{
+        id: 1,
+        text: t("aiChat.initialMessage"),
+        sender: "bot",
+        timestamp: new Date()
+      }]);
+    }
+  };
+
+  // Update initial message when language changes (only if no history)
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].sender === "bot" && messages[0].id === 1) {
       setMessages([{
         id: 1,
         text: t("aiChat.initialMessage"),
