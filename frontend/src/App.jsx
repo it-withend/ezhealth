@@ -14,6 +14,7 @@ import GenerateReport from "./pages/GenerateReport";
 
 import BottomNav from "./ui/components/BottomNav";
 import { AuthProvider } from "./context/AuthContext";
+import { LanguageProvider } from "./context/LanguageContext";
 
 // #region agent log
 const logAppEvent = (event, data) => {
@@ -41,8 +42,9 @@ function App() {
   // #endregion
 
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
         <Route path="/" element={<Onboarding />} />
 
@@ -137,7 +139,8 @@ function App() {
         />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

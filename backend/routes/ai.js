@@ -49,6 +49,44 @@ function getModel() {
   return process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
 }
 
+// Detect language from text
+function detectLanguage(text) {
+  if (!text || typeof text !== 'string') return 'Russian';
+  
+  const lowerText = text.toLowerCase();
+  
+  // Check for Uzbek (Cyrillic or Latin)
+  const uzbekPatterns = [
+    /[ўқғҳ]/,
+    /(salom|yaxshi|yomon|davolanish|bemor|shifokor|tibbiy)/i,
+    /(men|sen|u|biz|siz|ular)/i
+  ];
+  if (uzbekPatterns.some(p => p.test(lowerText))) {
+    return 'Uzbek';
+  }
+  
+  // Check for English
+  const englishPatterns = [
+    /(the|and|is|are|was|were|have|has|will|would|should|can|could)/i,
+    /(hello|hi|help|doctor|medical|health|symptom|pain|treatment)/i
+  ];
+  if (englishPatterns.some(p => p.test(lowerText))) {
+    return 'English';
+  }
+  
+  // Check for Russian (Cyrillic)
+  const russianPatterns = [
+    /[а-яё]/i,
+    /(привет|здравствуйте|помощь|врач|медицинский|здоровье|симптом|боль|лечение)/i
+  ];
+  if (russianPatterns.some(p => p.test(lowerText))) {
+    return 'Russian';
+  }
+  
+  // Default to Russian
+  return 'Russian';
+}
+
 // List of free models to try as fallback
 const FALLBACK_MODELS = [
   "google/gemini-2.0-flash-exp:free",
@@ -140,10 +178,18 @@ router.post("/analyze", authenticate, async (req, res) => {
         content: message
       });
 
+      // Detect user language from the last message
+      const userMessage = message || (history && history.length > 0 ? history[history.length - 1].content || history[history.length - 1].text : "");
+      const detectedLang = detectLanguage(userMessage);
+      
+      const systemPrompt = `You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals.
+
+CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix languages. Do NOT use English words if the user writes in Russian or Uzbek. Use ONLY ${detectedLang} language throughout your entire response. If you need to use medical terms, translate them to ${detectedLang} or provide them with ${detectedLang} explanations.`;
+
       const result = await tryWithFallback(
         client, 
         messages.filter(m => m.role !== "system"),
-        "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in the same language as the user."
+        systemPrompt
       );
 
       res.json({ response: result.response });
@@ -214,10 +260,17 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
     try {
       const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in the same language as the document.\n\n${fileText}`;
       
+      // Detect language from file content
+      const detectedLang = detectLanguage(fileText);
+      
+      const systemPrompt = `You are a medical document analyzer. Analyze medical documents and explain results in simple terms.
+
+CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix languages. Use ONLY ${detectedLang} language throughout your entire response.`;
+
       const result = await tryWithFallback(
         client,
         [{ role: "user", content: prompt }],
-        "You are a medical document analyzer. Analyze medical documents and explain results in simple terms."
+        systemPrompt
       );
       
       analysis = result.response;

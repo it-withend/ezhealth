@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { useLanguage } from "../context/LanguageContext";
 import "../styles/Assistant.css";
 
 export default function Assistant() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // #region agent log
   useEffect(() => {
@@ -28,29 +30,29 @@ export default function Assistant() {
     {
       id: 1,
       icon: "🏥",
-      title: "Schedule an Appointment",
-      description: "Find a doctor and book your appointment",
+      title: t("assistant.scheduleAppointment"),
+      description: t("assistant.scheduleAppointmentDesc"),
       color: "#2D9B8C"
     },
     {
       id: 2,
       icon: "📖",
-      title: "Get Advice",
-      description: "Chat with our AI and get medical advice",
+      title: t("assistant.getAdvice"),
+      description: t("assistant.getAdviceDesc"),
       color: "#4db8a8"
     },
     {
       id: 3,
       icon: "📄",
-      title: "Browse Documents",
-      description: "View your medical records and documents",
+      title: t("assistant.browseDocuments"),
+      description: t("assistant.browseDocumentsDesc"),
       color: "#2D9B8C"
     },
     {
       id: 4,
       icon: "👥",
-      title: "Review Doctors",
-      description: "Read reviews and find specialists",
+      title: t("assistant.reviewDoctors"),
+      description: t("assistant.reviewDoctorsDesc"),
       color: "#4db8a8"
     }
   ];
@@ -120,7 +122,7 @@ export default function Assistant() {
       <div className="assistant-content">
         <div className="greeting-section">
           <div className="greeting-bubble">
-            <p>Hello! 👋 I'm your Virtual Assistant. Select any topic or write your question below:</p>
+            <p>{t("assistant.greeting")} 👋 {t("assistant.greetingDesc")}</p>
           </div>
         </div>
 
@@ -142,10 +144,10 @@ export default function Assistant() {
         <div className="input-section">
           <input
             type="text"
-            placeholder="Type here to write your message"
+            placeholder={t("aiChat.placeholder")}
             className="message-input"
           />
-          <button className="send-btn">Send</button>
+          <button className="send-btn">{t("aiChat.send")}</button>
         </div>
       </div>
     </div>

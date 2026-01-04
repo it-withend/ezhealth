@@ -1,18 +1,20 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { HomeIcon, HealthIcon, ChatIcon, BellIcon, UserIcon } from "../icons/icons";
+import { useLanguage } from "../../context/LanguageContext";
 import "../styles/BottomNav.css";
 
 export default function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   const navItems = [
-    { path: "/home", label: "Home", icon: HomeIcon },
-    { path: "/health", label: "Health", icon: HealthIcon },
-    { path: "/consultation", label: "Consultation", icon: ChatIcon },
-    { path: "/reminders", label: "Reminders", icon: BellIcon },
-    { path: "/profile", label: "Profile", icon: UserIcon }
+    { path: "/home", label: t("nav.home"), icon: HomeIcon },
+    { path: "/health", label: t("nav.health"), icon: HealthIcon },
+    { path: "/consultation", label: t("nav.aiChat"), icon: ChatIcon },
+    { path: "/reminders", label: t("nav.reminders"), icon: BellIcon },
+    { path: "/profile", label: t("nav.profile"), icon: UserIcon }
   ];
 
   const isActive = path => location.pathname === path || location.pathname.startsWith(path + "/");

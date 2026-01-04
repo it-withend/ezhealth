@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
 import { EditIcon, DeleteIcon, AddIcon, LogoutIcon } from "../ui/icons/icons";
+import { useLanguage } from "../context/LanguageContext";
 import "../styles/Profile.css";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { t, language, changeLanguage } = useLanguage();
   const [profile, setProfile] = useState({
     name: "Kathryn Murphy",
     email: "kathryn.murphy@example.com",
@@ -84,7 +86,7 @@ export default function Profile() {
   };
 
   const logout = () => {
-    if (window.confirm("Вы уверены, что хотите выйти?")) {
+    if (window.confirm(t("profile.logoutConfirm"))) {
       localStorage.clear();
       navigate("/");
     }
@@ -94,7 +96,7 @@ export default function Profile() {
     <div className="profile-container">
       {/* Header */}
       <div className="profile-header">
-        <h1>Мой профиль</h1>
+        <h1>{t("profile.title")}</h1>
       </div>
 
       {/* Profile Info Card */}
@@ -108,7 +110,7 @@ export default function Profile() {
             <p className="profile-email">{profile.email}</p>
           </div>
           {!isEditing && (
-            <button className="edit-btn" onClick={() => setIsEditing(true)} title="Редактировать">
+            <button className="edit-btn" onClick={() => setIsEditing(true)} title={t("common.edit")}>
               <EditIcon />
             </button>
           )}
@@ -118,9 +120,9 @@ export default function Profile() {
       {/* Edit Mode */}
       {isEditing && (
         <Card className="edit-form">
-          <h3>Редактирование профиля</h3>
+          <h3>{t("profile.editProfile")}</h3>
           <div className="form-group">
-            <label>Имя</label>
+            <label>{t("profile.contactName")}</label>
             <input
               type="text"
               value={formData.name}
@@ -136,7 +138,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Телефон</label>
+            <label>{t("profile.contactTelegram").replace("Telegram ", "")}</label>
             <input
               type="tel"
               value={formData.phone}
@@ -144,7 +146,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Дата рождения</label>
+            <label>{t("health.date")}</label>
             <input
               type="date"
               value={formData.dateOfBirth}
@@ -152,7 +154,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Группа крови</label>
+            <label>{t("profile.bloodType")}</label>
             <input
               type="text"
               value={formData.bloodType}
@@ -160,7 +162,7 @@ export default function Profile() {
             />
           </div>
           <div className="form-group">
-            <label>Аллергии</label>
+            <label>{t("profile.allergies")}</label>
             <input
               type="text"
               value={formData.allergies}
@@ -168,8 +170,8 @@ export default function Profile() {
             />
           </div>
           <div className="form-actions">
-            <button className="save-btn" onClick={handleSaveProfile}>Сохранить</button>
-            <button className="cancel-btn" onClick={() => setIsEditing(false)}>Отмена</button>
+            <button className="save-btn" onClick={handleSaveProfile}>{t("common.save")}</button>
+            <button className="cancel-btn" onClick={() => setIsEditing(false)}>{t("common.cancel")}</button>
           </div>
         </Card>
       )}
@@ -177,17 +179,17 @@ export default function Profile() {
       {/* Medical Info */}
       {!isEditing && (
         <Card className="info-card">
-          <h3>Медицинская информация</h3>
+          <h3>{t("profile.medicalInfo")}</h3>
           <div className="info-row">
-            <span className="label">Группа крови:</span>
+            <span className="label">{t("profile.bloodType")}:</span>
             <span className="value">{profile.bloodType}</span>
           </div>
           <div className="info-row">
-            <span className="label">Аллергии:</span>
+            <span className="label">{t("profile.allergies")}:</span>
             <span className="value">{profile.allergies}</span>
           </div>
           <div className="info-row">
-            <span className="label">Медицинские состояния:</span>
+            <span className="label">{t("profile.medicalConditions")}:</span>
             <span className="value">{profile.medicalConditions}</span>
           </div>
         </Card>
@@ -196,8 +198,8 @@ export default function Profile() {
       {/* Trusted Contacts */}
       <div className="section">
         <div className="section-header">
-          <h3>Доверенные контакты</h3>
-          <button className="add-btn" onClick={() => setShowAddContact(!showAddContact)} title="Добавить контакт">
+          <h3>{t("profile.trustedContacts")}</h3>
+          <button className="add-btn" onClick={() => setShowAddContact(!showAddContact)} title={t("profile.addContact")}>
             <AddIcon />
           </button>
         </div>
@@ -205,16 +207,16 @@ export default function Profile() {
         {showAddContact && (
           <Card className="add-contact-form">
             <div className="form-group">
-              <label>Имя</label>
+              <label>{t("profile.contactName")}</label>
               <input
                 type="text"
-                placeholder="Имя контакта"
+                placeholder={t("profile.contactName")}
                 value={newContact.name}
                 onChange={e => setNewContact({ ...newContact, name: e.target.value })}
               />
             </div>
             <div className="form-group">
-              <label>Telegram пользователь</label>
+              <label>{t("profile.contactTelegram")}</label>
               <input
                 type="text"
                 placeholder="e.g., username"
@@ -223,8 +225,8 @@ export default function Profile() {
               />
             </div>
             <div className="form-actions">
-              <button className="save-btn" onClick={handleAddContact}>Добавить контакт</button>
-              <button className="cancel-btn" onClick={() => setShowAddContact(false)}>Отмена</button>
+              <button className="save-btn" onClick={handleAddContact}>{t("profile.addContact")}</button>
+              <button className="cancel-btn" onClick={() => setShowAddContact(false)}>{t("common.cancel")}</button>
             </div>
           </Card>
         )}
@@ -242,7 +244,7 @@ export default function Profile() {
               <button
                 className="remove-btn"
                 onClick={() => removeContact(contact.id)}
-                title="Удалить контакт"
+                title={t("common.delete")}
               >
                 <DeleteIcon />
               </button>
@@ -251,11 +253,38 @@ export default function Profile() {
         </div>
       </div>
 
+      {/* Language Settings */}
+      <Card className="settings-card">
+        <div className="language-section">
+          <h3>{t("profile.language")}</h3>
+          <div className="language-selector">
+            <button
+              className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+              onClick={() => changeLanguage('en')}
+            >
+              {t("profile.english")}
+            </button>
+            <button
+              className={`lang-btn ${language === 'ru' ? 'active' : ''}`}
+              onClick={() => changeLanguage('ru')}
+            >
+              {t("profile.russian")}
+            </button>
+            <button
+              className={`lang-btn ${language === 'uz' ? 'active' : ''}`}
+              onClick={() => changeLanguage('uz')}
+            >
+              {t("profile.uzbek")}
+            </button>
+          </div>
+        </div>
+      </Card>
+
       {/* Settings & Logout */}
       <Card className="settings-card">
-        <button className="logout-btn" onClick={logout} title="Выйти из аккаунта">
+        <button className="logout-btn" onClick={logout} title={t("profile.logout")}>
           <LogoutIcon />
-          <span>Выход</span>
+          <span>{t("profile.logout")}</span>
         </button>
       </Card>
     </div>
