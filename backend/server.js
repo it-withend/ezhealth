@@ -69,14 +69,14 @@ app.get("/api/health-check", (req, res) => {
 /* init db + start */
 initDatabase()
   .then(() => {
-    // Check OpenRouter API key on startup
-    if (process.env.OPENROUTER_API_KEY) {
-      const keyPreview = process.env.OPENROUTER_API_KEY.substring(0, 10) + "...";
-      const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
-      console.log(`🔑 OpenRouter API Key loaded: ${keyPreview}`);
+    // Check Poe API key on startup
+    if (process.env.POE_API_KEY) {
+      const keyPreview = process.env.POE_API_KEY.substring(0, 10) + "...";
+      const model = process.env.POE_MODEL || "Claude-Sonnet-4";
+      console.log(`🔑 Poe API Key loaded: ${keyPreview}`);
       console.log(`🤖 Using model: ${model}`);
     } else {
-      console.warn("⚠️  OPENROUTER_API_KEY not set! AI features will not work.");
+      console.warn("⚠️  POE_API_KEY not set! AI features will not work.");
     }
     
     app.listen(PORT, () => {

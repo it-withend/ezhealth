@@ -13,33 +13,33 @@ function getFileExtension(filename) {
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-// Lazy initialization of OpenRouter client
+// Lazy initialization of Poe API client
 let openaiClient = null;
 let currentApiKey = null;
 
-function getOpenRouterClient() {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+function getPoeClient() {
+  const apiKey = process.env.POE_API_KEY;
   
   if (!apiKey) {
-    console.error("❌ OPENROUTER_API_KEY environment variable is not set");
-    throw new Error("OPENROUTER_API_KEY environment variable is not set");
+    console.error("❌ POE_API_KEY environment variable is not set");
+    throw new Error("POE_API_KEY environment variable is not set");
   }
   
   // Reinitialize if API key changed
   if (!openaiClient || currentApiKey !== apiKey) {
     const keyPreview = apiKey.substring(0, 10) + "...";
     if (currentApiKey !== apiKey) {
-      console.log("🔑 OpenRouter API key changed, reinitializing client:", keyPreview);
+      console.log("🔑 Poe API key changed, reinitializing client:", keyPreview);
     } else {
-      console.log("🔑 Initializing OpenRouter client with API key:", keyPreview);
+      console.log("🔑 Initializing Poe API client with API key:", keyPreview);
     }
     
-    // OpenRouter uses OpenAI-compatible format
+    // Poe uses OpenAI-compatible API format
     openaiClient = new OpenAI({
-      baseURL: "https://openrouter.ai/api/v1",
+      baseURL: "https://api.poe.com/v1",
       apiKey: apiKey,
       defaultHeaders: {
-        "HTTP-Referer": process.env.OPENROUTER_REFERRER || "https://github.com",
+        "HTTP-Referer": process.env.POE_REFERRER || "https://github.com",
         "X-Title": "EZ Health App"
       }
     });
@@ -49,9 +49,10 @@ function getOpenRouterClient() {
   return openaiClient;
 }
 
-// Get model name from env or use default free model
+// Get model name from env or use default Poe model
+// Poe supports many models: Claude-Opus-4.1, Claude-Sonnet-4, Gemini-2.5-Pro, GPT-4o, etc.
 function getModel() {
-  return process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
+  return process.env.POE_MODEL || "Claude-Sonnet-4";
 }
 
 // Detect language from text
@@ -92,31 +93,30 @@ function detectLanguage(text) {
   return 'Russian';
 }
 
-// List of free models from OpenRouter (https://openrouter.ai/models)
+// List of models from Poe API (https://api.poe.com/v1)
 // Models are separated into multimodal (support images/files) and text-only
 
+// Poe API models - all models support text, many support images/files
+// Poe provides access to hundreds of models through a single API
 // MULTIMODAL MODELS: Can analyze text, images, files and respond with text
 // These models support image input and can process photos/documents
 // Used ONLY in chat with file/image upload capability
-// Only verified working models are included
 const MULTIMODAL_MODELS = [
-  "google/gemini-2.0-flash-exp:free",           // Gemini 2.0 Flash - verified working (may be rate-limited)
+  "GPT-4o",                    // GPT-4o - multimodal, supports images
+  "Claude-Opus-4.1",           // Claude Opus 4.1 - multimodal
+  "Claude-Sonnet-4",           // Claude Sonnet 4 - multimodal
+  "Gemini-2.5-Pro",            // Gemini 2.5 Pro - multimodal
+  "Gemini-2.0-Flash",          // Gemini 2.0 Flash - multimodal
 ];
 
 // TEXT-ONLY MODELS: Can analyze only text and respond with text
-// These models do NOT support images/files, only text input
 // Used in regular text chat (all models: multimodal + text-only)
-// Models are ordered by reliability (verified working first)
+// Note: Most Poe models are multimodal, but some are text-only
 const TEXT_ONLY_MODELS = [
-  // Verified working models (confirmed from error logs - 429 means model exists)
-  "meta-llama/llama-3.2-3b-instruct:free",      // Llama 3.2 3B Instruct - verified (429 = exists)
-  "mistralai/mistral-7b-instruct:free",        // Mistral 7B Instruct - verified (429 = exists)
-  
-  // Additional models to try (may work, will be skipped if 404/400)
-  "meta-llama/llama-3.2-1b-instruct:free",      // Llama 3.2 1B - smaller variant
-  "mistralai/mistral-7b-instruct-v0.2:free",   // Mistral 7B v0.2 - alternative version
-  "google/gemini-pro:free",                      // Gemini Pro - text mode
-  "google/gemini-flash-1.5:free",                // Gemini Flash 1.5 - may support text
+  "Claude-Haiku-4",            // Claude Haiku 4 - fast text model
+  "Llama-3.1-405B",            // Llama 3.1 405B - large text model
+  "Grok-4",                    // Grok 4 - text model
+  "GPT-4o-mini",                // GPT-4o Mini - smaller text model
 ];
 
 // Combined list for regular text chat: multimodal first, then text-only
@@ -216,7 +216,7 @@ router.post("/analyze", authenticate, async (req, res) => {
     }
 
     try {
-      const client = getOpenRouterClient();
+      const client = getPoeClient();
       
       // Build messages array
       const messages = [];
@@ -256,39 +256,37 @@ CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix language
       );
 
       res.json({ response: result.response });
-    } catch (openrouterError) {
-      console.error("OpenRouter API Error:", openrouterError);
-      console.error("OpenRouter Error Details:", {
-        message: openrouterError.message,
-        status: openrouterError.status,
-        code: openrouterError.code,
-        response: openrouterError.response?.data
+    } catch (poeError) {
+      console.error("Poe API Error:", poeError);
+      console.error("Poe Error Details:", {
+        message: poeError.message,
+        status: poeError.status,
+        code: poeError.code,
+        response: poeError.response?.data
       });
       
       // Check if it's an authentication error
-      if (openrouterError.status === 401 || openrouterError.status === 403 || openrouterError.message?.includes('api key')) {
-        console.error("⚠️ OpenRouter API Key issue detected!");
+      if (poeError.status === 401 || poeError.status === 403 || poeError.message?.includes('api key')) {
+        console.error("⚠️ Poe API Key issue detected!");
         return res.status(500).json({ 
-          error: "OpenRouter API authentication failed. Please check API key configuration.",
-          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
+          error: "Poe API authentication failed. Please check API key configuration.",
+          details: process.env.NODE_ENV === 'development' ? poeError.message : undefined
         });
       }
       
       // Check if it's a quota/rate limit error
-      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit') || openrouterError.message?.includes('rate-limited')) {
-        console.error("⚠️ OpenRouter API Rate limit exceeded!");
-        const errorMessage = openrouterError.error?.metadata?.raw || openrouterError.message || "Rate limit exceeded";
+      if (poeError.status === 429 || poeError.message?.includes('quota') || poeError.message?.includes('rate limit') || poeError.message?.includes('rate-limited')) {
+        console.error("⚠️ Poe API Rate limit exceeded!");
+        const errorMessage = poeError.error?.metadata?.raw || poeError.message || "Rate limit exceeded";
         return res.status(500).json({ 
           error: "AI сервис временно недоступен из-за ограничений. Пожалуйста, попробуйте через несколько минут.",
-          details: errorMessage.includes('rate-limited') 
-            ? "Бесплатная модель временно ограничена. Попробуйте позже или добавьте свой API ключ в настройках OpenRouter."
-            : "Превышен лимит запросов. Попробуйте позже."
+          details: "Превышен лимит запросов (500 запросов в минуту). Попробуйте позже."
         });
       }
       
       res.status(500).json({ 
         error: "AI service temporarily unavailable. Please try again later.",
-        details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
+        details: process.env.NODE_ENV === 'development' ? poeError.message : undefined
       });
     }
   } catch (error) {
@@ -413,8 +411,8 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
     filePath = req.file.path;
     const isImage = isImageFile(req.file.mimetype, req.file.originalname);
     
-    // Get OpenRouter client
-    const client = getOpenRouterClient();
+    // Get Poe API client
+    const client = getPoeClient();
 
     let analysis;
     try {
@@ -472,23 +470,21 @@ CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix language
       );
       
       analysis = result.response;
-    } catch (openrouterError) {
-      console.error("OpenRouter API Error in file analysis:", openrouterError);
+    } catch (poeError) {
+      console.error("Poe API Error in file analysis:", poeError);
       
       // Check if it's a quota/rate limit error
-      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit') || openrouterError.message?.includes('rate-limited')) {
-        console.error("⚠️ OpenRouter API Rate limit exceeded!");
-        const errorMessage = openrouterError.error?.metadata?.raw || openrouterError.message || "Rate limit exceeded";
+      if (poeError.status === 429 || poeError.message?.includes('quota') || poeError.message?.includes('rate limit') || poeError.message?.includes('rate-limited')) {
+        console.error("⚠️ Poe API Rate limit exceeded!");
+        const errorMessage = poeError.error?.metadata?.raw || poeError.message || "Rate limit exceeded";
         return res.status(500).json({ 
           error: "AI сервис временно недоступен из-за ограничений. Пожалуйста, попробуйте через несколько минут.",
-          details: errorMessage.includes('rate-limited') 
-            ? "Бесплатная модель временно ограничена. Попробуйте позже или добавьте свой API ключ в настройках OpenRouter."
-            : "Превышен лимит запросов. Попробуйте позже."
+          details: "Превышен лимит запросов (500 запросов в минуту). Попробуйте позже."
         });
       }
       
       // Re-throw to be caught by outer catch
-      throw openrouterError;
+      throw poeError;
     }
 
     // Clean up uploaded file
@@ -531,7 +527,7 @@ router.post("/generate-report", authenticate, async (req, res) => {
       .join("\n");
 
     try {
-      const client = getOpenRouterClient();
+      const client = getPoeClient();
       
       const prompt = `You are a medical assistant creating a concise summary report for a doctor. 
 Create a structured medical consultation summary in Russian language. 
@@ -550,18 +546,16 @@ ${conversation}`;
 
       const report = result.response;
       res.json({ report });
-    } catch (openrouterError) {
-      console.error("OpenRouter API Error:", openrouterError);
+    } catch (poeError) {
+      console.error("Poe API Error:", poeError);
       
       // Check if it's a quota/rate limit error
-      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit') || openrouterError.message?.includes('rate-limited')) {
-        console.error("⚠️ OpenRouter API Rate limit exceeded!");
-        const errorMessage = openrouterError.error?.metadata?.raw || openrouterError.message || "Rate limit exceeded";
+      if (poeError.status === 429 || poeError.message?.includes('quota') || poeError.message?.includes('rate limit') || poeError.message?.includes('rate-limited')) {
+        console.error("⚠️ Poe API Rate limit exceeded!");
+        const errorMessage = poeError.error?.metadata?.raw || poeError.message || "Rate limit exceeded";
         return res.status(500).json({ 
           error: "AI сервис временно недоступен из-за ограничений. Пожалуйста, попробуйте через несколько минут.",
-          details: errorMessage.includes('rate-limited') 
-            ? "Бесплатная модель временно ограничена. Попробуйте позже или добавьте свой API ключ в настройках OpenRouter."
-            : "Превышен лимит запросов. Попробуйте позже."
+          details: "Превышен лимит запросов (500 запросов в минуту). Попробуйте позже."
         });
       }
       
@@ -603,7 +597,7 @@ router.post("/summary", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Missing conversation" });
     }
 
-    const client = getOpenRouterClient();
+    const client = getPoeClient();
     
     const prompt = `Create a short structured medical summary for a doctor in Russian language.
 

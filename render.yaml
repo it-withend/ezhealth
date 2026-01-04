@@ -14,7 +14,7 @@ services:
         sync: false
       - key: TELEGRAM_BOT_USERNAME
         sync: false
-      - key: OPENROUTER_API_KEY
+      - key: POE_API_KEY
         sync: false
-      - key: OPENROUTER_MODEL
-        value: google/gemini-2.0-flash-exp:free
+      - key: POE_MODEL
+        value: Claude-Sonnet-4
