@@ -92,34 +92,48 @@ function detectLanguage(text) {
   return 'Russian';
 }
 
-// List of free models to try as fallback
-// Models are ordered by priority: multimodal (image support) first, then text-only
-// Multimodal models (support images and text):
+// List of free models from OpenRouter (https://openrouter.ai/models)
+// Models are separated into multimodal (support images/files) and text-only
+
+// MULTIMODAL MODELS: Can analyze text, images, files and respond with text
+// These models support image input and can process photos/documents
+// Used ONLY in chat with file/image upload capability
 const MULTIMODAL_MODELS = [
-  "google/gemini-2.0-flash-exp:free",           // Gemini 2.0 Flash - best multimodal, supports images
-  "google/gemini-flash-1.5:free",               // Gemini 1.5 Flash - multimodal, supports images
-  "google/gemini-1.5-flash:free",              // Gemini 1.5 Flash - multimodal, supports images
+  "google/gemini-2.0-flash-exp:free",           // Gemini 2.0 Flash - multimodal, supports images
   "google/gemini-2.0-flash-thinking-exp:free", // Gemini 2.0 Flash Thinking - multimodal
-  "google/gemini-pro-1.5:free",                 // Gemini Pro 1.5 - multimodal (if available free)
-  "google/gemini-1.5-pro:free",                // Gemini 1.5 Pro - multimodal (if available free)
 ];
 
-// Text-only models (fallback if multimodal fail):
+// TEXT-ONLY MODELS: Can analyze only text and respond with text
+// These models do NOT support images/files, only text input
+// Used in regular text chat (all models: multimodal + text-only)
 const TEXT_ONLY_MODELS = [
-  "meta-llama/llama-3.2-3b-instruct:free",
-  "mistralai/mistral-7b-instruct:free",
-  "deepseek/deepseek-chat:free",
-  "microsoft/phi-3-mini-128k-instruct:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "meta-llama/llama-3.1-70b-instruct:free",
-  "mistralai/mistral-small:free",
-  "qwen/qwen-2-7b-instruct:free",
-  "huggingface/zephyr-7b-beta:free",
-  "openchat/openchat-7b:free",
-  "perplexity/llama-3.1-sonar-small-128k-online:free",
+  // Meta Llama models
+  "meta-llama/llama-3.2-3b-instruct:free",      // Llama 3.2 3B Instruct
+  "meta-llama/llama-3.1-8b-instruct:free",      // Llama 3.1 8B Instruct
+  "meta-llama/llama-3.1-70b-instruct:free",     // Llama 3.1 70B Instruct
+  
+  // Mistral models
+  "mistralai/mistral-7b-instruct:free",        // Mistral 7B Instruct
+  "mistralai/mistral-small:free",              // Mistral Small
+  
+  // DeepSeek models
+  "deepseek/deepseek-chat:free",                // DeepSeek Chat
+  
+  // Microsoft models
+  "microsoft/phi-3-mini-128k-instruct:free",   // Phi-3 Mini 128K
+  
+  // Qwen models
+  "qwen/qwen-2-7b-instruct:free",              // Qwen 2 7B Instruct
+  
+  // Other models
+  "huggingface/zephyr-7b-beta:free",            // Zephyr 7B Beta
+  "openchat/openchat-7b:free",                  // OpenChat 7B
+  "perplexity/llama-3.1-sonar-small-128k-online:free", // Perplexity Sonar Small
 ];
 
-// Combined list: multimodal first, then text-only
+// Combined list for regular text chat: multimodal first, then text-only
+// This is used for regular text chat (tryWithFallback) - includes ALL models
+// For file/image uploads, use tryWithFallbackForFile which uses ONLY MULTIMODAL_MODELS
 const FALLBACK_MODELS = [...MULTIMODAL_MODELS, ...TEXT_ONLY_MODELS];
 
 // Helper function to sleep
@@ -166,8 +180,10 @@ async function tryWithFallback(client, messages, systemMessage = null) {
                          errorMessage?.includes('temporarily rate-limited');
       
       // If it's a 404 (model not found), skip this model and try next
-      if (errorStatus === 404) {
-        console.log(`⚠️ Model ${model} not found (404), trying next model`);
+      // Handle 404 (not found) and 400 (invalid model ID) - skip and try next
+      if (errorStatus === 404 || errorStatus === 400) {
+        const errorType = errorStatus === 404 ? 'not found (404)' : 'invalid model ID (400)';
+        console.log(`⚠️ Model ${model} ${errorType}, trying next model`);
         // Add small delay before trying next model
         if (i < modelsToTry.length - 1) {
           await sleep(500);
@@ -322,12 +338,13 @@ function imageToBase64(filePath, filename) {
   return `data:${mimetype};base64,${base64Image}`;
 }
 
-// Try to get response with fallback models (with support for images)
+// Try to get response with fallback models (for file/image uploads)
+// IMPORTANT: For files/images, use ONLY multimodal models (they can process images/files)
+// For text-only chat, use tryWithFallback which includes all models
 async function tryWithFallbackForFile(client, messages, systemMessage = null, isImage = false) {
-  // For images, use only multimodal models
-  const modelsToTry = isImage 
-    ? [getModel(), ...MULTIMODAL_MODELS.filter(m => m !== getModel())]
-    : [getModel(), ...FALLBACK_MODELS.filter(m => m !== getModel())];
+  // For files/images (both image files and text files), use ONLY multimodal models
+  // Multimodal models can process both images and text files
+  const modelsToTry = [getModel(), ...MULTIMODAL_MODELS.filter(m => m !== getModel())];
   
   let lastError = null;
   let rateLimitedModels = [];
@@ -364,8 +381,10 @@ async function tryWithFallbackForFile(client, messages, systemMessage = null, is
                          errorMessage?.includes('rate limit') ||
                          errorMessage?.includes('temporarily rate-limited');
       
-      if (errorStatus === 404) {
-        console.log(`⚠️ Model ${model} not found (404), trying next model`);
+      // Handle 404 (not found) and 400 (invalid model ID) - skip and try next
+      if (errorStatus === 404 || errorStatus === 400) {
+        const errorType = errorStatus === 404 ? 'not found (404)' : 'invalid model ID (400)';
+        console.log(`⚠️ Model ${model} ${errorType}, trying next model`);
         if (i < modelsToTry.length - 1) {
           await sleep(500);
         }
