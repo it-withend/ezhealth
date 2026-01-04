@@ -49,6 +49,62 @@ function getModel() {
   return process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
 }
 
+// List of free models to try as fallback
+const FALLBACK_MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
+  "qwen/qwen-2.5-7b-instruct:free",
+  "deepseek/deepseek-chat:free"
+];
+
+// Try to get response with fallback models
+async function tryWithFallback(client, messages, systemMessage = null) {
+  const modelsToTry = [getModel(), ...FALLBACK_MODELS.filter(m => m !== getModel())];
+  
+  let lastError = null;
+  
+  for (const model of modelsToTry) {
+    try {
+      console.log(`🔄 Trying model: ${model}`);
+      
+      const messageArray = systemMessage 
+        ? [{ role: "system", content: systemMessage }, ...messages]
+        : messages;
+      
+      const completion = await client.chat.completions.create({
+        model: model,
+        messages: messageArray,
+        temperature: 0.7
+      });
+      
+      console.log(`✅ Success with model: ${model}`);
+      return { response: completion.choices[0].message.content, model };
+    } catch (error) {
+      lastError = error;
+      const errorMessage = error.error?.metadata?.raw || error.message || "Unknown error";
+      console.log(`❌ Model ${model} failed:`, error.status || errorMessage);
+      
+      // If it's not a rate limit error, don't try other models
+      const isRateLimit = error.status === 429 || 
+                         error.message?.includes('rate limit') || 
+                         error.message?.includes('rate-limited') ||
+                         errorMessage?.includes('rate-limited') ||
+                         errorMessage?.includes('rate limit');
+      
+      if (!isRateLimit) {
+        throw error;
+      }
+      
+      // Continue to next model if rate limited
+      continue;
+    }
+  }
+  
+  // If all models failed, throw the last error
+  throw lastError;
+}
+
 // POST /api/ai/analyze - Analyze text message
 router.post("/analyze", authenticate, async (req, res) => {
   try {
@@ -60,15 +116,9 @@ router.post("/analyze", authenticate, async (req, res) => {
 
     try {
       const client = getOpenRouterClient();
-      const model = getModel();
       
       // Build messages array
-      const messages = [
-        { 
-          role: "system", 
-          content: "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in the same language as the user." 
-        }
-      ];
+      const messages = [];
 
       // Add history if provided
       if (history && Array.isArray(history)) {
@@ -90,14 +140,13 @@ router.post("/analyze", authenticate, async (req, res) => {
         content: message
       });
 
-      const completion = await client.chat.completions.create({
-        model: model,
-        messages: messages,
-        temperature: 0.7
-      });
+      const result = await tryWithFallback(
+        client, 
+        messages.filter(m => m.role !== "system"),
+        "You are a medical AI assistant. Provide helpful health information but always recommend consulting with healthcare professionals. Respond in the same language as the user."
+      );
 
-      const response = completion.choices[0].message.content;
-      res.json({ response });
+      res.json({ response: result.response });
     } catch (openrouterError) {
       console.error("OpenRouter API Error:", openrouterError);
       console.error("OpenRouter Error Details:", {
@@ -117,11 +166,14 @@ router.post("/analyze", authenticate, async (req, res) => {
       }
       
       // Check if it's a quota/rate limit error
-      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit')) {
-        console.error("⚠️ OpenRouter API Quota exceeded!");
+      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit') || openrouterError.message?.includes('rate-limited')) {
+        console.error("⚠️ OpenRouter API Rate limit exceeded!");
+        const errorMessage = openrouterError.error?.metadata?.raw || openrouterError.message || "Rate limit exceeded";
         return res.status(500).json({ 
-          error: "OpenRouter API quota exceeded. Please check your account limits. The AI service is temporarily unavailable.",
-          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
+          error: "AI сервис временно недоступен из-за ограничений. Пожалуйста, попробуйте через несколько минут.",
+          details: errorMessage.includes('rate-limited') 
+            ? "Бесплатная модель временно ограничена. Попробуйте позже или добавьте свой API ключ в настройках OpenRouter."
+            : "Превышен лимит запросов. Попробуйте позже."
         });
       }
       
@@ -157,37 +209,30 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
 
     // Get OpenRouter client
     const client = getOpenRouterClient();
-    const model = getModel();
 
     let analysis;
     try {
       const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in the same language as the document.\n\n${fileText}`;
       
-      const completion = await client.chat.completions.create({
-        model: model,
-        messages: [
-          {
-            role: "system",
-            content: "You are a medical document analyzer. Analyze medical documents and explain results in simple terms."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7
-      });
+      const result = await tryWithFallback(
+        client,
+        [{ role: "user", content: prompt }],
+        "You are a medical document analyzer. Analyze medical documents and explain results in simple terms."
+      );
       
-      analysis = completion.choices[0].message.content;
+      analysis = result.response;
     } catch (openrouterError) {
       console.error("OpenRouter API Error in file analysis:", openrouterError);
       
       // Check if it's a quota/rate limit error
-      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit')) {
-        console.error("⚠️ OpenRouter API Quota exceeded!");
+      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit') || openrouterError.message?.includes('rate-limited')) {
+        console.error("⚠️ OpenRouter API Rate limit exceeded!");
+        const errorMessage = openrouterError.error?.metadata?.raw || openrouterError.message || "Rate limit exceeded";
         return res.status(500).json({ 
-          error: "OpenRouter API quota exceeded. Please check your account limits. The AI service is temporarily unavailable.",
-          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
+          error: "AI сервис временно недоступен из-за ограничений. Пожалуйста, попробуйте через несколько минут.",
+          details: errorMessage.includes('rate-limited') 
+            ? "Бесплатная модель временно ограничена. Попробуйте позже или добавьте свой API ключ в настройках OpenRouter."
+            : "Превышен лимит запросов. Попробуйте позже."
         });
       }
       
@@ -236,7 +281,6 @@ router.post("/generate-report", authenticate, async (req, res) => {
 
     try {
       const client = getOpenRouterClient();
-      const model = getModel();
       
       const prompt = `You are a medical assistant creating a concise summary report for a doctor. 
 Create a structured medical consultation summary in Russian language. 
@@ -247,33 +291,26 @@ Create a medical consultation summary for patient ${userName || "Patient"} based
 
 ${conversation}`;
 
-      const completion = await client.chat.completions.create({
-        model: model,
-        messages: [
-          {
-            role: "system",
-            content: "You are a medical assistant creating concise summary reports for doctors."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      });
+      const result = await tryWithFallback(
+        client,
+        [{ role: "user", content: prompt }],
+        "You are a medical assistant creating concise summary reports for doctors."
+      );
 
-      const report = completion.choices[0].message.content;
+      const report = result.response;
       res.json({ report });
     } catch (openrouterError) {
       console.error("OpenRouter API Error:", openrouterError);
       
       // Check if it's a quota/rate limit error
-      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit')) {
-        console.error("⚠️ OpenRouter API Quota exceeded!");
+      if (openrouterError.status === 429 || openrouterError.message?.includes('quota') || openrouterError.message?.includes('rate limit') || openrouterError.message?.includes('rate-limited')) {
+        console.error("⚠️ OpenRouter API Rate limit exceeded!");
+        const errorMessage = openrouterError.error?.metadata?.raw || openrouterError.message || "Rate limit exceeded";
         return res.status(500).json({ 
-          error: "OpenRouter API quota exceeded. Please check your account limits. The AI service is temporarily unavailable.",
-          details: process.env.NODE_ENV === 'development' ? openrouterError.message : undefined
+          error: "AI сервис временно недоступен из-за ограничений. Пожалуйста, попробуйте через несколько минут.",
+          details: errorMessage.includes('rate-limited') 
+            ? "Бесплатная модель временно ограничена. Попробуйте позже или добавьте свой API ключ в настройках OpenRouter."
+            : "Превышен лимит запросов. Попробуйте позже."
         });
       }
       
@@ -316,28 +353,18 @@ router.post("/summary", authenticate, async (req, res) => {
     }
 
     const client = getOpenRouterClient();
-    const model = getModel();
     
     const prompt = `Create a short structured medical summary for a doctor in Russian language.
 
 ${conversation}`;
 
-    const completion = await client.chat.completions.create({
-      model: model,
-      messages: [
-        {
-          role: "system",
-          content: "You are a medical assistant creating short structured summaries for doctors."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7
-    });
+    const result = await tryWithFallback(
+      client,
+      [{ role: "user", content: prompt }],
+      "You are a medical assistant creating short structured summaries for doctors."
+    );
 
-    const summary = completion.choices[0].message.content;
+    const summary = result.response;
 
     res.json({
       summary: summary
