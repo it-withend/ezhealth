@@ -5,6 +5,11 @@ import path from "path";
 import OpenAI from "openai";
 import { authenticate } from '../middleware/auth.js';
 
+// Helper to get file extension
+function getFileExtension(filename) {
+  return path.extname(filename).toLowerCase();
+}
+
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
@@ -88,23 +93,50 @@ function detectLanguage(text) {
 }
 
 // List of free models to try as fallback
-const FALLBACK_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
+// Models are ordered by priority: multimodal (image support) first, then text-only
+// Multimodal models (support images and text):
+const MULTIMODAL_MODELS = [
+  "google/gemini-2.0-flash-exp:free",           // Gemini 2.0 Flash - best multimodal, supports images
+  "google/gemini-flash-1.5:free",               // Gemini 1.5 Flash - multimodal, supports images
+  "google/gemini-1.5-flash:free",              // Gemini 1.5 Flash - multimodal, supports images
+  "google/gemini-2.0-flash-thinking-exp:free", // Gemini 2.0 Flash Thinking - multimodal
+  "google/gemini-pro-1.5:free",                 // Gemini Pro 1.5 - multimodal (if available free)
+  "google/gemini-1.5-pro:free",                // Gemini 1.5 Pro - multimodal (if available free)
+];
+
+// Text-only models (fallback if multimodal fail):
+const TEXT_ONLY_MODELS = [
   "meta-llama/llama-3.2-3b-instruct:free",
   "mistralai/mistral-7b-instruct:free",
-  "qwen/qwen-2.5-7b-instruct:free",
-  "deepseek/deepseek-chat:free"
+  "deepseek/deepseek-chat:free",
+  "microsoft/phi-3-mini-128k-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "meta-llama/llama-3.1-70b-instruct:free",
+  "mistralai/mistral-small:free",
+  "qwen/qwen-2-7b-instruct:free",
+  "huggingface/zephyr-7b-beta:free",
+  "openchat/openchat-7b:free",
+  "perplexity/llama-3.1-sonar-small-128k-online:free",
 ];
+
+// Combined list: multimodal first, then text-only
+const FALLBACK_MODELS = [...MULTIMODAL_MODELS, ...TEXT_ONLY_MODELS];
+
+// Helper function to sleep
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Try to get response with fallback models
 async function tryWithFallback(client, messages, systemMessage = null) {
   const modelsToTry = [getModel(), ...FALLBACK_MODELS.filter(m => m !== getModel())];
   
   let lastError = null;
+  let rateLimitedModels = [];
   
-  for (const model of modelsToTry) {
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const model = modelsToTry[i];
+    
     try {
-      console.log(`🔄 Trying model: ${model}`);
+      console.log(`🔄 Trying model: ${model} (${i + 1}/${modelsToTry.length})`);
       
       const messageArray = systemMessage 
         ? [{ role: "system", content: systemMessage }, ...messages]
@@ -121,22 +153,49 @@ async function tryWithFallback(client, messages, systemMessage = null) {
     } catch (error) {
       lastError = error;
       const errorMessage = error.error?.metadata?.raw || error.message || "Unknown error";
-      console.log(`❌ Model ${model} failed:`, error.status || errorMessage);
+      const errorStatus = error.status || error.code;
       
-      // If it's not a rate limit error, don't try other models
-      const isRateLimit = error.status === 429 || 
+      console.log(`❌ Model ${model} failed:`, errorStatus || errorMessage);
+      
+      // Check if it's a rate limit error (429) - only then try other models
+      const isRateLimit = errorStatus === 429 || 
                          error.message?.includes('rate limit') || 
                          error.message?.includes('rate-limited') ||
                          errorMessage?.includes('rate-limited') ||
-                         errorMessage?.includes('rate limit');
+                         errorMessage?.includes('rate limit') ||
+                         errorMessage?.includes('temporarily rate-limited');
       
-      if (!isRateLimit) {
+      // If it's a 404 (model not found), skip this model and try next
+      if (errorStatus === 404) {
+        console.log(`⚠️ Model ${model} not found (404), trying next model`);
+        // Add small delay before trying next model
+        if (i < modelsToTry.length - 1) {
+          await sleep(500);
+        }
+        continue;
+      } else if (isRateLimit) {
+        // Track rate-limited models
+        rateLimitedModels.push(model);
+        console.log(`⏳ Model ${model} rate-limited, trying next model`);
+        // Add delay before trying next model (to avoid hitting rate limits)
+        if (i < modelsToTry.length - 1) {
+          await sleep(1000);
+        }
+        continue;
+      } else {
+        // For other errors (not 404, not 429), throw immediately
+        console.error(`❌ Non-recoverable error with model ${model}:`, errorStatus, errorMessage);
         throw error;
       }
-      
-      // Continue to next model if rate limited
-      continue;
     }
+  }
+  
+  // If all models failed due to rate limits, provide helpful error
+  if (rateLimitedModels.length === modelsToTry.length) {
+    const error = new Error("All free models are currently rate-limited. Please try again in a few minutes.");
+    error.status = 429;
+    error.rateLimitedModels = rateLimitedModels;
+    throw error;
   }
   
   // If all models failed, throw the last error
@@ -234,7 +293,108 @@ CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix language
   }
 });
 
-// POST /api/ai/analyze-file - Analyze uploaded file
+// Helper function to check if file is an image
+function isImageFile(mimetype, filename) {
+  const imageMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+  return imageMimes.includes(mimetype) || imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+}
+
+// Helper function to get MIME type from file extension
+function getMimeType(filename) {
+  const ext = getFileExtension(filename);
+  const mimeTypes = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp'
+  };
+  return mimeTypes[ext] || 'image/jpeg';
+}
+
+// Helper function to convert image to base64
+function imageToBase64(filePath, filename) {
+  const imageBuffer = fs.readFileSync(filePath);
+  const base64Image = imageBuffer.toString('base64');
+  const mimetype = getMimeType(filename);
+  return `data:${mimetype};base64,${base64Image}`;
+}
+
+// Try to get response with fallback models (with support for images)
+async function tryWithFallbackForFile(client, messages, systemMessage = null, isImage = false) {
+  // For images, use only multimodal models
+  const modelsToTry = isImage 
+    ? [getModel(), ...MULTIMODAL_MODELS.filter(m => m !== getModel())]
+    : [getModel(), ...FALLBACK_MODELS.filter(m => m !== getModel())];
+  
+  let lastError = null;
+  let rateLimitedModels = [];
+  
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const model = modelsToTry[i];
+    
+    try {
+      console.log(`🔄 Trying model: ${model} (${i + 1}/${modelsToTry.length})${isImage ? ' [IMAGE]' : ''}`);
+      
+      const messageArray = systemMessage 
+        ? [{ role: "system", content: systemMessage }, ...messages]
+        : messages;
+      
+      const completion = await client.chat.completions.create({
+        model: model,
+        messages: messageArray,
+        temperature: 0.7
+      });
+      
+      console.log(`✅ Success with model: ${model}`);
+      return { response: completion.choices[0].message.content, model };
+    } catch (error) {
+      lastError = error;
+      const errorMessage = error.error?.metadata?.raw || error.message || "Unknown error";
+      const errorStatus = error.status || error.code;
+      
+      console.log(`❌ Model ${model} failed:`, errorStatus || errorMessage);
+      
+      const isRateLimit = errorStatus === 429 || 
+                         error.message?.includes('rate limit') || 
+                         error.message?.includes('rate-limited') ||
+                         errorMessage?.includes('rate-limited') ||
+                         errorMessage?.includes('rate limit') ||
+                         errorMessage?.includes('temporarily rate-limited');
+      
+      if (errorStatus === 404) {
+        console.log(`⚠️ Model ${model} not found (404), trying next model`);
+        if (i < modelsToTry.length - 1) {
+          await sleep(500);
+        }
+        continue;
+      } else if (isRateLimit) {
+        rateLimitedModels.push(model);
+        console.log(`⏳ Model ${model} rate-limited, trying next model`);
+        if (i < modelsToTry.length - 1) {
+          await sleep(1000);
+        }
+        continue;
+      } else {
+        console.error(`❌ Non-recoverable error with model ${model}:`, errorStatus, errorMessage);
+        throw error;
+      }
+    }
+  }
+  
+  if (rateLimitedModels.length === modelsToTry.length) {
+    const error = new Error("All free models are currently rate-limited. Please try again in a few minutes.");
+    error.status = 429;
+    error.rateLimitedModels = rateLimitedModels;
+    throw error;
+  }
+  
+  throw lastError;
+}
+
+// POST /api/ai/analyze-file - Analyze uploaded file (text or image)
 router.post("/analyze-file", authenticate, upload.single("file"), async (req, res) => {
   let filePath = null;
   try {
@@ -244,33 +404,64 @@ router.post("/analyze-file", authenticate, upload.single("file"), async (req, re
     }
 
     filePath = req.file.path;
-
-    // Read file with error handling
-    let fileText;
-    try {
-      fileText = fs.readFileSync(filePath, "utf8");
-    } catch (readError) {
-      return res.status(400).json({ error: "Failed to read file", details: readError.message });
-    }
-
+    const isImage = isImageFile(req.file.mimetype, req.file.originalname);
+    
     // Get OpenRouter client
     const client = getOpenRouterClient();
 
     let analysis;
     try {
-      const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in the same language as the document.\n\n${fileText}`;
+      let messages = [];
+      let detectedLang = 'Russian';
       
-      // Detect language from file content
-      const detectedLang = detectLanguage(fileText);
+      if (isImage) {
+        // Handle image file
+        console.log('📷 Processing image file:', req.file.originalname);
+        const base64Image = imageToBase64(filePath, req.file.originalname);
+        
+        // For multimodal models, send image as content array
+        messages = [{
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Analyze this medical image (X-ray, test result, document photo, etc.). Explain what you see in simple terms. Highlight any risks or concerns. Respond in the same language as the user's request or in Russian if not specified."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: base64Image
+              }
+            }
+          ]
+        }];
+        
+        detectedLang = 'Russian'; // Default for images
+      } else {
+        // Handle text file
+        console.log('📄 Processing text file:', req.file.originalname);
+        let fileText;
+        try {
+          fileText = fs.readFileSync(filePath, "utf8");
+        } catch (readError) {
+          return res.status(400).json({ error: "Failed to read file", details: readError.message });
+        }
+        
+        detectedLang = detectLanguage(fileText);
+        const prompt = `Analyze the following medical document. Explain results simply. Highlight risks. Respond in the same language as the document.\n\n${fileText}`;
+        
+        messages = [{ role: "user", content: prompt }];
+      }
       
-      const systemPrompt = `You are a medical document analyzer. Analyze medical documents and explain results in simple terms.
+      const systemPrompt = `You are a medical document and image analyzer. Analyze medical documents, images, test results, X-rays, and explain results in simple terms.
 
 CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix languages. Use ONLY ${detectedLang} language throughout your entire response.`;
 
-      const result = await tryWithFallback(
+      const result = await tryWithFallbackForFile(
         client,
-        [{ role: "user", content: prompt }],
-        systemPrompt
+        messages,
+        systemPrompt,
+        isImage
       );
       
       analysis = result.response;

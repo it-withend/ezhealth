@@ -175,6 +175,8 @@ export const translations = {
       fileUploaded: "📄 Document uploaded:",
       documentAnalyzed: "Document analyzed",
       errorAnalyzing: "Error analyzing file",
+      errorRateLimit: "All AI models are currently busy. Please try again in a few minutes.",
+      errorModelNotFound: "AI model not available. Please try again later.",
       subtitle: "Get instant health advice"
     },
     // Onboarding
@@ -360,6 +362,8 @@ export const translations = {
       fileUploaded: "📄 Загружен документ:",
       documentAnalyzed: "Документ проанализирован",
       errorAnalyzing: "Ошибка при анализе файла",
+      errorRateLimit: "Все ИИ модели сейчас заняты. Пожалуйста, попробуйте через несколько минут.",
+      errorModelNotFound: "ИИ модель недоступна. Пожалуйста, попробуйте позже.",
       subtitle: "Получите мгновенные советы по здоровью"
     },
     // Onboarding
@@ -545,6 +549,8 @@ export const translations = {
       fileUploaded: "📄 Hujjat yuklandi:",
       documentAnalyzed: "Hujjat tahlil qilindi",
       errorAnalyzing: "Faylni tahlil qilishda xatolik",
+      errorRateLimit: "Barcha AI modellar hozir band. Iltimos, bir necha daqiqadan keyin qayta urinib ko'ring.",
+      errorModelNotFound: "AI model mavjud emas. Iltimos, keyinroq qayta urinib ko'ring.",
       subtitle: "Tezkor salomatlik maslahatlarini oling"
     },
     // Onboarding

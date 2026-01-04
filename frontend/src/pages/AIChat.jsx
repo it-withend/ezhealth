@@ -125,9 +125,20 @@ export default function AIChat() {
       let errorMessage = error.response?.data?.error || error.message || "Unknown error";
       
       // Use translated error message from backend or fallback
+      let userFriendlyError = errorMessage;
+      
+      // Check for specific error types
+      if (errorMessage.includes("rate-limited") || errorMessage.includes("rate limit") || error.response?.status === 429) {
+        userFriendlyError = t("aiChat.errorRateLimit");
+      } else if (errorMessage.includes("not found") || errorMessage.includes("404") || error.response?.status === 404) {
+        userFriendlyError = t("aiChat.errorModelNotFound");
+      } else if (errorMessage.includes("quota") || errorMessage.includes("insufficient_quota")) {
+        userFriendlyError = t("aiChat.errorRateLimit");
+      }
+      
       const botMessage = {
         id: messages.length + 2,
-        text: `${t("common.error")}: ${errorMessage}`,
+        text: userFriendlyError,
         sender: "bot",
         timestamp: new Date()
       };
