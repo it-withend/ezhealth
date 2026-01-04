@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
 import { EditIcon, DeleteIcon, AddIcon, LogoutIcon } from "../ui/icons/icons";
 import { useLanguage } from "../context/LanguageContext";
+import { AuthContext } from "../context/AuthContext";
+import { api } from "../services/api";
 import "../styles/Profile.css";
 
 export default function Profile() {
   const navigate = useNavigate();
   const { t, language, changeLanguage } = useLanguage();
+  const { user } = useContext(AuthContext);
   const [profile, setProfile] = useState({
     name: "Kathryn Murphy",
     email: "kathryn.murphy@example.com",
@@ -19,17 +22,41 @@ export default function Profile() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(profile);
-  const [trustedContacts, setTrustedContacts] = useState([
-    { id: 1, name: "Mom", telegram: "mom_user", canViewData: true, canAlert: true },
-    { id: 2, name: "Sister", telegram: "sister_user", canViewData: true, canAlert: false }
-  ]);
+  const [trustedContacts, setTrustedContacts] = useState([]);
   const [showAddContact, setShowAddContact] = useState(false);
-  const [newContact, setNewContact] = useState({ name: "", telegram: "" });
+  const [newContact, setNewContact] = useState({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
+  const [loadingContacts, setLoadingContacts] = useState(true);
+
+  // Load trusted contacts from API
+  useEffect(() => {
+    if (user) {
+      loadTrustedContacts();
+    }
+  }, [user]);
+
+  const loadTrustedContacts = async () => {
+    if (!user) return;
+    try {
+      setLoadingContacts(true);
+      const response = await api.get("/contacts");
+      const contacts = response.data.map(c => ({
+        id: c.id,
+        name: c.contact_name || `@${c.contact_telegram_id}`,
+        telegram: c.contact_telegram_id,
+        canViewData: c.can_view_health_data === 1,
+        canAlert: c.can_receive_alerts === 1
+      }));
+      setTrustedContacts(contacts);
+    } catch (error) {
+      console.error("Error loading contacts:", error);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
 
   // Load data from localStorage on mount
   useEffect(() => {
     const savedProfile = localStorage.getItem("userProfile");
-    const savedContacts = localStorage.getItem("trustedContacts");
     
     if (savedProfile) {
       try {
@@ -40,14 +67,6 @@ export default function Profile() {
         console.error("Failed to load profile");
       }
     }
-    
-    if (savedContacts) {
-      try {
-        setTrustedContacts(JSON.parse(savedContacts));
-      } catch (e) {
-        console.error("Failed to load contacts");
-      }
-    }
   }, []);
 
   // Save profile to localStorage
@@ -55,34 +74,93 @@ export default function Profile() {
     localStorage.setItem("userProfile", JSON.stringify(profile));
   }, [profile]);
 
-  // Save contacts to localStorage
-  useEffect(() => {
-    localStorage.setItem("trustedContacts", JSON.stringify(trustedContacts));
-  }, [trustedContacts]);
-
   const handleSaveProfile = () => {
     setProfile(formData);
     setIsEditing(false);
   };
 
-  const handleAddContact = () => {
-    if (newContact.name && newContact.telegram) {
-      setTrustedContacts([
-        ...trustedContacts,
-        {
-          id: Math.max(...trustedContacts.map(c => c.id), 0) + 1,
-          ...newContact,
-          canViewData: true,
-          canAlert: true
-        }
-      ]);
-      setNewContact({ name: "", telegram: "" });
+  const handleAddContact = async () => {
+    if (!newContact.name || !newContact.telegram) {
+      alert(t("profile.contactRequired"));
+      return;
+    }
+
+    try {
+      await api.post("/contacts", {
+        contactTelegramId: newContact.telegram.replace("@", ""),
+        contactName: newContact.name,
+        canViewHealthData: newContact.canViewData,
+        canReceiveAlerts: newContact.canReceiveAlerts
+      });
+      setNewContact({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
       setShowAddContact(false);
+      loadTrustedContacts();
+    } catch (error) {
+      console.error("Error adding contact:", error);
+      alert(t("profile.errorAddingContact"));
     }
   };
 
-  const removeContact = (id) => {
-    setTrustedContacts(trustedContacts.filter(c => c.id !== id));
+  const removeContact = async (id) => {
+    if (!window.confirm(t("profile.deleteContactConfirm"))) return;
+    
+    try {
+      await api.delete(`/contacts/${id}`);
+      loadTrustedContacts();
+    } catch (error) {
+      console.error("Error removing contact:", error);
+      alert(t("profile.errorRemovingContact"));
+    }
+  };
+
+  const handleEmergencyAlert = async () => {
+    if (!window.confirm(t("profile.emergencyConfirm"))) return;
+
+    try {
+      // Get user's location
+      const position = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation not supported"));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      const locationUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+      // Send emergency alert to trusted contacts
+      await api.post("/alerts/emergency", {
+        message: t("profile.emergencyMessage"),
+        location: { latitude, longitude },
+        locationUrl
+      });
+
+      alert(t("profile.emergencySent"));
+    } catch (error) {
+      console.error("Error sending emergency alert:", error);
+      if (error.message.includes("Geolocation")) {
+        alert(t("profile.locationError"));
+      } else {
+        alert(t("profile.emergencyError"));
+      }
+    }
+  };
+
+  const handleShareHealthData = async () => {
+    try {
+      await api.post("/contacts/share", {
+        dataType: "health_metrics",
+        contactIds: trustedContacts.filter(c => c.canViewData).map(c => c.id)
+      });
+      alert(t("profile.dataShared"));
+    } catch (error) {
+      console.error("Error sharing data:", error);
+      alert(t("profile.errorSharingData"));
+    }
   };
 
   const logout = () => {
@@ -219,10 +297,30 @@ export default function Profile() {
               <label>{t("profile.contactTelegram")}</label>
               <input
                 type="text"
-                placeholder="e.g., username"
+                placeholder="e.g., username or telegram_id"
                 value={newContact.telegram}
                 onChange={e => setNewContact({ ...newContact, telegram: e.target.value })}
               />
+            </div>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={newContact.canViewData}
+                  onChange={e => setNewContact({ ...newContact, canViewData: e.target.checked })}
+                />
+                {t("profile.canViewData")}
+              </label>
+            </div>
+            <div className="form-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={newContact.canReceiveAlerts}
+                  onChange={e => setNewContact({ ...newContact, canReceiveAlerts: e.target.checked })}
+                />
+                {t("profile.canReceiveAlerts")}
+              </label>
             </div>
             <div className="form-actions">
               <button className="save-btn" onClick={handleAddContact}>{t("profile.addContact")}</button>
@@ -231,27 +329,49 @@ export default function Profile() {
           </Card>
         )}
 
-        <div className="contacts-list">
-          {trustedContacts.map(contact => (
-            <Card key={contact.id} className="contact-card">
-              <div className="contact-info">
-                <div className="contact-icon">👤</div>
-                <div className="contact-details">
-                  <div className="contact-name">{contact.name}</div>
-                  <div className="contact-handle">@{contact.telegram}</div>
-                </div>
-              </div>
-              <button
-                className="remove-btn"
-                onClick={() => removeContact(contact.id)}
-                title={t("common.delete")}
-              >
-                <DeleteIcon />
-              </button>
-            </Card>
-          ))}
-        </div>
+        {loadingContacts ? (
+          <p>{t("common.loading")}</p>
+        ) : (
+          <div className="contacts-list">
+            {trustedContacts.length > 0 ? (
+              trustedContacts.map(contact => (
+                <Card key={contact.id} className="contact-card">
+                  <div className="contact-info">
+                    <div className="contact-icon">👤</div>
+                    <div className="contact-details">
+                      <div className="contact-name">{contact.name}</div>
+                      <div className="contact-handle">@{contact.telegram}</div>
+                      <div className="contact-permissions">
+                        {contact.canViewData && <span className="permission-badge">{t("profile.canViewData")}</span>}
+                        {contact.canAlert && <span className="permission-badge">{t("profile.canReceiveAlerts")}</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    className="remove-btn"
+                    onClick={() => removeContact(contact.id)}
+                    title={t("common.delete")}
+                  >
+                    <DeleteIcon />
+                  </button>
+                </Card>
+              ))
+            ) : (
+              <p className="empty-state">{t("profile.noContacts")}</p>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Emergency & Share Section */}
+      <Card className="settings-card">
+        <button className="emergency-btn" onClick={handleEmergencyAlert}>
+          🚨 {t("profile.emergencyButton")}
+        </button>
+        <button className="share-data-btn" onClick={handleShareHealthData}>
+          📊 {t("profile.shareHealthData")}
+        </button>
+      </Card>
 
       {/* Language Settings */}
       <Card className="settings-card">

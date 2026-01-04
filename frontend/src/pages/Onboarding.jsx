@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../context/LanguageContext";
 import "../styles/Onboarding.css";
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -28,14 +30,14 @@ export default function Onboarding() {
 
       <div className="onboarding-content">
         <div className="text-section">
-          <h1 className="onboarding-title">Your digital healthcare assistant</h1>
+          <h1 className="onboarding-title">{t("onboarding.title")}</h1>
           <p className="onboarding-subtitle">
-            Book appointments, review doctors and track your medical history
+            {t("onboarding.subtitle")}
           </p>
         </div>
 
         <button className="get-started-btn" onClick={handleGetStarted}>
-          Get Started
+          {t("onboarding.getStarted")}
         </button>
       </div>
     </div>

@@ -6,7 +6,7 @@ import "../styles/AIChat.css";
 
 export default function AIChat() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -27,6 +27,18 @@ export default function AIChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Update initial message when language changes
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].sender === "bot") {
+      setMessages([{
+        id: 1,
+        text: t("aiChat.initialMessage"),
+        sender: "bot",
+        timestamp: new Date()
+      }]);
+    }
+  }, [language, t]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || loading) return;
@@ -180,7 +192,10 @@ export default function AIChat() {
         <button className="back-btn" onClick={() => navigate("/home")}>
           {t("aiChat.back")}
         </button>
-        <h1>{t("aiChat.healthAssistant")}</h1>
+        <div className="ai-chat-header-center">
+          <h1>{t("aiChat.title")}</h1>
+          <p className="ai-chat-subtitle">{t("aiChat.subtitle")}</p>
+        </div>
         <button className="report-btn" onClick={handleGenerateReport} title={t("aiChat.generateReport")}>
           📋
         </button>

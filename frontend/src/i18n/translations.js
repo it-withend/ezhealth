@@ -58,7 +58,23 @@ export const translations = {
       selectLanguage: "Select Language",
       english: "English",
       russian: "Russian",
-      uzbek: "Uzbek"
+      uzbek: "Uzbek",
+      contactRequired: "Please enter name and Telegram ID",
+      errorAddingContact: "Error adding contact",
+      errorRemovingContact: "Error removing contact",
+      deleteContactConfirm: "Delete this contact?",
+      canViewData: "Can view health data",
+      canReceiveAlerts: "Can receive alerts",
+      noContacts: "No trusted contacts yet",
+      emergencyButton: "I'm not feeling well",
+      emergencyConfirm: "Send emergency alert with your location to trusted contacts?",
+      emergencyMessage: "Emergency! I need help. My location:",
+      emergencySent: "Emergency alert sent to trusted contacts",
+      emergencyError: "Error sending emergency alert",
+      locationError: "Could not get your location. Please enable location services.",
+      shareHealthData: "Share Health Metrics",
+      dataShared: "Health data shared with trusted contacts",
+      errorSharingData: "Error sharing data"
     },
     // Assistant
     assistant: {
@@ -158,7 +174,14 @@ export const translations = {
       initialMessage: "Hello! I'm your AI health assistant. How can I help you today?",
       fileUploaded: "📄 Document uploaded:",
       documentAnalyzed: "Document analyzed",
-      errorAnalyzing: "Error analyzing file"
+      errorAnalyzing: "Error analyzing file",
+      subtitle: "Get instant health advice"
+    },
+    // Onboarding
+    onboarding: {
+      title: "Your digital healthcare assistant",
+      subtitle: "Book appointments, review doctors and track your medical history",
+      getStarted: "Get Started"
     }
   },
   ru: {
@@ -220,7 +243,23 @@ export const translations = {
       selectLanguage: "Выберите язык",
       english: "Английский",
       russian: "Русский",
-      uzbek: "Узбекский"
+      uzbek: "Узбекский",
+      contactRequired: "Пожалуйста, введите имя и Telegram ID",
+      errorAddingContact: "Ошибка при добавлении контакта",
+      errorRemovingContact: "Ошибка при удалении контакта",
+      deleteContactConfirm: "Удалить этот контакт?",
+      canViewData: "Может просматривать данные о здоровье",
+      canReceiveAlerts: "Может получать уведомления",
+      noContacts: "Пока нет доверенных контактов",
+      emergencyButton: "Мне плохо",
+      emergencyConfirm: "Отправить экстренное уведомление с вашей геолокацией доверенным контактам?",
+      emergencyMessage: "Экстренная ситуация! Мне нужна помощь. Моя геолокация:",
+      emergencySent: "Экстренное уведомление отправлено доверенным контактам",
+      emergencyError: "Ошибка при отправке экстренного уведомления",
+      locationError: "Не удалось получить вашу геолокацию. Пожалуйста, включите службы геолокации.",
+      shareHealthData: "Поделиться показателями здоровья",
+      dataShared: "Данные о здоровье отправлены доверенным контактам",
+      errorSharingData: "Ошибка при отправке данных"
     },
     // Assistant
     assistant: {
@@ -320,7 +359,14 @@ export const translations = {
       initialMessage: "Здравствуйте! Я ваш ИИ помощник по здоровью. Чем могу помочь?",
       fileUploaded: "📄 Загружен документ:",
       documentAnalyzed: "Документ проанализирован",
-      errorAnalyzing: "Ошибка при анализе файла"
+      errorAnalyzing: "Ошибка при анализе файла",
+      subtitle: "Получите мгновенные советы по здоровью"
+    },
+    // Onboarding
+    onboarding: {
+      title: "Ваш цифровой помощник по здоровью",
+      subtitle: "Записывайтесь на приёмы, читайте отзывы о врачах и отслеживайте медицинскую историю",
+      getStarted: "Начать"
     }
   },
   uz: {
@@ -382,7 +428,23 @@ export const translations = {
       selectLanguage: "Tilni tanlang",
       english: "Inglizcha",
       russian: "Ruscha",
-      uzbek: "O'zbekcha"
+      uzbek: "O'zbekcha",
+      contactRequired: "Iltimos, ism va Telegram ID kiriting",
+      errorAddingContact: "Kontakt qo'shishda xatolik",
+      errorRemovingContact: "Kontaktni o'chirishda xatolik",
+      deleteContactConfirm: "Bu kontaktni o'chirishni xohlaysizmi?",
+      canViewData: "Salomatlik ma'lumotlarini ko'rish mumkin",
+      canReceiveAlerts: "Ogohlantirishlarni olish mumkin",
+      noContacts: "Hozircha ishonchli kontaktlar yo'q",
+      emergencyButton: "Men yomon his qilyapman",
+      emergencyConfirm: "Ishonchli kontaktlarga geolokatsiya bilan favqulodda ogohlantirish yuborilsinmi?",
+      emergencyMessage: "Favqulodda vaziyat! Menga yordam kerak. Mening joylashuvim:",
+      emergencySent: "Favqulodda ogohlantirish ishonchli kontaktlarga yuborildi",
+      emergencyError: "Favqulodda ogohlantirishni yuborishda xatolik",
+      locationError: "Geolokatsiyani olish mumkin emas. Iltimos, geolokatsiya xizmatlarini yoqing.",
+      shareHealthData: "Salomatlik ko'rsatkichlarini baham ko'rish",
+      dataShared: "Salomatlik ma'lumotlari ishonchli kontaktlarga yuborildi",
+      errorSharingData: "Ma'lumotlarni yuborishda xatolik"
     },
     // Assistant
     assistant: {
@@ -482,7 +544,14 @@ export const translations = {
       initialMessage: "Salom! Men sizning AI salomatlik yordamchingizman. Qanday yordam bera olaman?",
       fileUploaded: "📄 Hujjat yuklandi:",
       documentAnalyzed: "Hujjat tahlil qilindi",
-      errorAnalyzing: "Faylni tahlil qilishda xatolik"
+      errorAnalyzing: "Faylni tahlil qilishda xatolik",
+      subtitle: "Tezkor salomatlik maslahatlarini oling"
+    },
+    // Onboarding
+    onboarding: {
+      title: "Sizning raqamli salomatlik yordamchingiz",
+      subtitle: "Qabulga yoziling, shifokorlar sharhlarini o'qing va tibbiy tarixni kuzatib boring",
+      getStarted: "Boshlash"
     }
   }
 };

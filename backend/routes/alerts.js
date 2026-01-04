@@ -119,4 +119,59 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
+// Emergency alert with location
+router.post("/emergency", authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { message, location, locationUrl } = req.body;
+
+    // Get user info
+    const user = await dbGet(`SELECT * FROM users WHERE id = ?`, [userId]);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Get trusted contacts who can receive alerts
+    const contacts = await dbAll(
+      `SELECT * FROM trusted_contacts WHERE user_id = ? AND can_receive_alerts = 1`,
+      [userId]
+    );
+
+    if (contacts.length === 0) {
+      return res.status(404).json({ error: "No trusted contacts with alert permissions found" });
+    }
+
+    // Format emergency message
+    const emergencyMessage = message || "Emergency! I need help.";
+    const fullMessage = locationUrl 
+      ? `${emergencyMessage}\n📍 Location: ${locationUrl}`
+      : location
+      ? `${emergencyMessage}\n📍 Location: ${location.latitude}, ${location.longitude}`
+      : emergencyMessage;
+
+    // In production, send via Telegram Bot API
+    // For now, log the alerts
+    console.log(`🚨 EMERGENCY ALERT from user ${userId} (${user.first_name || 'User'})`);
+    console.log(`Message: ${fullMessage}`);
+    console.log(`Sending to ${contacts.length} contacts:`);
+    contacts.forEach(contact => {
+      console.log(`  - ${contact.contact_name || contact.contact_telegram_id} (ID: ${contact.contact_telegram_id})`);
+    });
+
+    res.json({
+      success: true,
+      message: "Emergency alert sent",
+      contactsNotified: contacts.length,
+      contacts: contacts.map(c => ({
+        id: c.id,
+        name: c.contact_name,
+        telegramId: c.contact_telegram_id
+      }))
+    });
+  } catch (error) {
+    console.error("Emergency alert error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

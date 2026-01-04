@@ -8,77 +8,73 @@ export const LanguageProvider = ({ children }) => {
 
   // Detect language on mount
   useEffect(() => {
-    // 1. Check localStorage for saved language preference
-    const savedLanguage = localStorage.getItem('app_language');
-    if (savedLanguage && translations[savedLanguage]) {
-      setLanguage(savedLanguage);
-      return;
-    }
+    let detectedLang = null;
 
-    // 2. Try to get language from Telegram WebApp
+    // 1. Try to get language from Telegram WebApp first (highest priority)
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
       
       // Try to get language from initDataUnsafe
       if (tg.initDataUnsafe?.user?.language_code) {
         const tgLang = tg.initDataUnsafe.user.language_code.toLowerCase();
+        console.log('🌐 Telegram language detected:', tgLang);
         // Map Telegram language codes to our language codes
         if (tgLang.startsWith('uz')) {
-          setLanguage('uz');
-          localStorage.setItem('app_language', 'uz');
-          return;
+          detectedLang = 'uz';
         } else if (tgLang.startsWith('ru')) {
-          setLanguage('ru');
-          localStorage.setItem('app_language', 'ru');
-          return;
+          detectedLang = 'ru';
         } else if (tgLang.startsWith('en')) {
-          setLanguage('en');
-          localStorage.setItem('app_language', 'en');
-          return;
+          detectedLang = 'en';
         }
       }
       
-      // Try to get language from Telegram WebApp versionParams
-      if (tg.versionParams?.language_code) {
+      // Try to get language from Telegram WebApp versionParams if not found
+      if (!detectedLang && tg.versionParams?.language_code) {
         const tgLang = tg.versionParams.language_code.toLowerCase();
+        console.log('🌐 Telegram versionParams language detected:', tgLang);
         if (tgLang.startsWith('uz')) {
-          setLanguage('uz');
-          localStorage.setItem('app_language', 'uz');
-          return;
+          detectedLang = 'uz';
         } else if (tgLang.startsWith('ru')) {
-          setLanguage('ru');
-          localStorage.setItem('app_language', 'ru');
-          return;
+          detectedLang = 'ru';
         } else if (tgLang.startsWith('en')) {
-          setLanguage('en');
-          localStorage.setItem('app_language', 'en');
-          return;
+          detectedLang = 'en';
         }
       }
     }
 
-    // 3. Try to get language from browser/system
-    const browserLang = navigator.language || navigator.userLanguage;
-    if (browserLang) {
-      const langCode = browserLang.toLowerCase().split('-')[0];
-      if (langCode === 'uz') {
-        setLanguage('uz');
-        localStorage.setItem('app_language', 'uz');
-        return;
-      } else if (langCode === 'ru') {
-        setLanguage('ru');
-        localStorage.setItem('app_language', 'ru');
-        return;
-      } else if (langCode === 'en') {
-        setLanguage('en');
-        localStorage.setItem('app_language', 'en');
-        return;
+    // 2. Try to get language from browser/system if Telegram not available
+    if (!detectedLang) {
+      const browserLang = navigator.language || navigator.userLanguage;
+      if (browserLang) {
+        const langCode = browserLang.toLowerCase().split('-')[0];
+        console.log('🌐 Browser language detected:', langCode);
+        if (langCode === 'uz') {
+          detectedLang = 'uz';
+        } else if (langCode === 'ru') {
+          detectedLang = 'ru';
+        } else if (langCode === 'en') {
+          detectedLang = 'en';
+        }
       }
     }
 
-    // 4. Default to Russian
-    setLanguage('ru');
-    localStorage.setItem('app_language', 'ru');
+    // 3. Check localStorage for saved language preference (only if no auto-detection)
+    if (!detectedLang) {
+      const savedLanguage = localStorage.getItem('app_language');
+      if (savedLanguage && translations[savedLanguage]) {
+        detectedLang = savedLanguage;
+        console.log('🌐 Using saved language:', savedLanguage);
+      }
+    }
+
+    // 4. Default to English if nothing detected
+    if (!detectedLang) {
+      detectedLang = 'en';
+      console.log('🌐 Using default language: en');
+    }
+
+    setLanguage(detectedLang);
+    localStorage.setItem('app_language', detectedLang);
   }, []);
 
   // Save language preference when changed
