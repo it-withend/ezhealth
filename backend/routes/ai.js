@@ -98,37 +98,25 @@ function detectLanguage(text) {
 // MULTIMODAL MODELS: Can analyze text, images, files and respond with text
 // These models support image input and can process photos/documents
 // Used ONLY in chat with file/image upload capability
+// Only verified working models are included
 const MULTIMODAL_MODELS = [
-  "google/gemini-2.0-flash-exp:free",           // Gemini 2.0 Flash - multimodal, supports images
-  "google/gemini-2.0-flash-thinking-exp:free", // Gemini 2.0 Flash Thinking - multimodal
+  "google/gemini-2.0-flash-exp:free",           // Gemini 2.0 Flash - verified working (may be rate-limited)
 ];
 
 // TEXT-ONLY MODELS: Can analyze only text and respond with text
 // These models do NOT support images/files, only text input
 // Used in regular text chat (all models: multimodal + text-only)
+// Models are ordered by reliability (verified working first)
 const TEXT_ONLY_MODELS = [
-  // Meta Llama models
-  "meta-llama/llama-3.2-3b-instruct:free",      // Llama 3.2 3B Instruct
-  "meta-llama/llama-3.1-8b-instruct:free",      // Llama 3.1 8B Instruct
-  "meta-llama/llama-3.1-70b-instruct:free",     // Llama 3.1 70B Instruct
+  // Verified working models (confirmed from error logs - 429 means model exists)
+  "meta-llama/llama-3.2-3b-instruct:free",      // Llama 3.2 3B Instruct - verified (429 = exists)
+  "mistralai/mistral-7b-instruct:free",        // Mistral 7B Instruct - verified (429 = exists)
   
-  // Mistral models
-  "mistralai/mistral-7b-instruct:free",        // Mistral 7B Instruct
-  "mistralai/mistral-small:free",              // Mistral Small
-  
-  // DeepSeek models
-  "deepseek/deepseek-chat:free",                // DeepSeek Chat
-  
-  // Microsoft models
-  "microsoft/phi-3-mini-128k-instruct:free",   // Phi-3 Mini 128K
-  
-  // Qwen models
-  "qwen/qwen-2-7b-instruct:free",              // Qwen 2 7B Instruct
-  
-  // Other models
-  "huggingface/zephyr-7b-beta:free",            // Zephyr 7B Beta
-  "openchat/openchat-7b:free",                  // OpenChat 7B
-  "perplexity/llama-3.1-sonar-small-128k-online:free", // Perplexity Sonar Small
+  // Additional models to try (may work, will be skipped if 404/400)
+  "meta-llama/llama-3.2-1b-instruct:free",      // Llama 3.2 1B - smaller variant
+  "mistralai/mistral-7b-instruct-v0.2:free",   // Mistral 7B v0.2 - alternative version
+  "google/gemini-pro:free",                      // Gemini Pro - text mode
+  "google/gemini-flash-1.5:free",                // Gemini Flash 1.5 - may support text
 ];
 
 // Combined list for regular text chat: multimodal first, then text-only
