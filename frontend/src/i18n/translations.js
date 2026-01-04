@@ -29,11 +29,16 @@ export const translations = {
     // Home
     home: {
       title: "Health Dashboard",
+      welcome: "Welcome back,",
       search: "Search...",
+      searchPlaceholder: "Find a doctor or specialty",
       nearby: "Nearby",
-      appointments: "Appointments",
-      today: "Today",
-      tomorrow: "Tomorrow"
+      seeAll: "See All",
+      appointments: "Upcoming Appointments",
+      noAppointments: "No upcoming appointments",
+      goodToKnow: "Good to Know",
+      covidUpdates: "Latest COVID Updates",
+      covidSubtitle: "Subscribe to get daily COVID updates"
     },
     // Profile
     profile: {
@@ -79,7 +84,24 @@ export const translations = {
       metric: "Metric",
       value: "Value",
       date: "Date",
-      noData: "No data available"
+      noData: "No data available",
+      noDataHint: "Add metrics to see the chart",
+      recordNew: "Record New Metric",
+      addManual: "+ Add Manual Entry",
+      type: "Type",
+      notes: "Notes (optional)",
+      notesPlaceholder: "Additional notes...",
+      saveMetric: "Save Metric",
+      current: "Current:",
+      normalRange: "Normal Range:",
+      pulse: "Pulse",
+      sleep: "Sleep",
+      weight: "Weight",
+      pressure: "Blood Pressure",
+      systolic: "Blood Pressure (Systolic)",
+      diastolic: "Blood Pressure (Diastolic)",
+      sugar: "Blood Sugar",
+      unit: "Unit"
     },
     // Documents
     documents: {
@@ -90,23 +112,53 @@ export const translations = {
     },
     // Reminders
     reminders: {
-      title: "Reminders",
-      medications: "Medications",
-      habits: "Habits",
+      title: "Health Reminders",
       addReminder: "Add Reminder",
+      addNew: "Add New Reminder",
+      type: "Type",
       name: "Name",
+      nameRequired: "Please enter a name",
+      dosage: "Dosage",
       time: "Time",
-      completed: "Completed",
-      pending: "Pending"
+      frequency: "Frequency",
+      daily: "Daily",
+      every2Hours: "Every 2 hours",
+      every4Hours: "Every 4 hours",
+      weekly: "Weekly",
+      loading: "Loading reminders...",
+      empty: "No reminders yet. Add your first one!",
+      deleteConfirm: "Delete this reminder?",
+      markCompleted: "Mark as completed",
+      deleteReminder: "Delete reminder",
+      errorMarking: "Error marking reminder",
+      errorAdding: "Error adding reminder",
+      errorDeleting: "Error deleting reminder",
+      medication: "💊 Medication",
+      water: "💧 Drink Water",
+      vitamin: "🌅 Vitamin",
+      walk: "🚶 Physical Activity",
+      other: "✅ Other Habit",
+      criticalAlerts: "Critical Health Alerts",
+      criticalAlertsDesc: "Automatic notifications to trusted contacts when health metrics are critical",
+      enableAlerts: "Enable Critical Alerts"
     },
     // AI Chat
     aiChat: {
       title: "AI Consultation",
-      placeholder: "Type your message...",
+      healthAssistant: "Health Assistant",
+      back: "← Back",
+      generateReport: "Generate Report",
+      placeholder: "Describe your symptoms or ask a question...",
       send: "Send",
       uploadFile: "Upload File",
+      uploadPhoto: "📷 Upload Photo",
+      uploadDocument: "📄 Upload Document",
       generating: "Generating response...",
-      error: "AI service temporarily unavailable"
+      error: "AI service temporarily unavailable",
+      initialMessage: "Hello! I'm your AI health assistant. How can I help you today?",
+      fileUploaded: "📄 Document uploaded:",
+      documentAnalyzed: "Document analyzed",
+      errorAnalyzing: "Error analyzing file"
     }
   },
   ru: {
@@ -139,11 +191,16 @@ export const translations = {
     // Home
     home: {
       title: "Панель здоровья",
+      welcome: "С возвращением,",
       search: "Поиск...",
+      searchPlaceholder: "Найти врача или специализацию",
       nearby: "Рядом",
-      appointments: "Записи",
-      today: "Сегодня",
-      tomorrow: "Завтра"
+      seeAll: "Все",
+      appointments: "Предстоящие записи",
+      noAppointments: "Нет предстоящих записей",
+      goodToKnow: "Полезно знать",
+      covidUpdates: "Последние обновления COVID",
+      covidSubtitle: "Подпишитесь, чтобы получать ежедневные обновления COVID"
     },
     // Profile
     profile: {
@@ -189,7 +246,24 @@ export const translations = {
       metric: "Показатель",
       value: "Значение",
       date: "Дата",
-      noData: "Нет данных"
+      noData: "Нет данных",
+      noDataHint: "Добавьте показатели, чтобы увидеть график",
+      recordNew: "Записать новый показатель",
+      addManual: "+ Добавить вручную",
+      type: "Тип",
+      notes: "Заметки (необязательно)",
+      notesPlaceholder: "Дополнительные заметки...",
+      saveMetric: "Сохранить показатель",
+      current: "Текущее:",
+      normalRange: "Нормальный диапазон:",
+      pulse: "Пульс",
+      sleep: "Сон",
+      weight: "Вес",
+      pressure: "Артериальное давление",
+      systolic: "Артериальное давление (Систолическое)",
+      diastolic: "Артериальное давление (Диастолическое)",
+      sugar: "Сахар в крови",
+      unit: "Единица измерения"
     },
     // Documents
     documents: {
@@ -200,23 +274,53 @@ export const translations = {
     },
     // Reminders
     reminders: {
-      title: "Напоминания",
-      medications: "Лекарства",
-      habits: "Привычки",
+      title: "Напоминания здоровья",
       addReminder: "Добавить напоминание",
+      addNew: "Добавить новое напоминание",
+      type: "Тип",
       name: "Название",
+      nameRequired: "Пожалуйста, введите название",
+      dosage: "Дозировка",
       time: "Время",
-      completed: "Выполнено",
-      pending: "Ожидает"
+      frequency: "Частота",
+      daily: "Ежедневно",
+      every2Hours: "Каждые 2 часа",
+      every4Hours: "Каждые 4 часа",
+      weekly: "Еженедельно",
+      loading: "Загрузка напоминаний...",
+      empty: "Пока нет напоминаний. Добавьте первое!",
+      deleteConfirm: "Удалить это напоминание?",
+      markCompleted: "Отметить как выполненное",
+      deleteReminder: "Удалить напоминание",
+      errorMarking: "Ошибка при отметке напоминания",
+      errorAdding: "Ошибка при добавлении напоминания",
+      errorDeleting: "Ошибка при удалении напоминания",
+      medication: "💊 Лекарство",
+      water: "💧 Пить воду",
+      vitamin: "🌅 Витамин",
+      walk: "🚶 Физическая активность",
+      other: "✅ Другая привычка",
+      criticalAlerts: "Критические уведомления о здоровье",
+      criticalAlertsDesc: "Автоматическая отправка сообщений доверенным лицам при критических показателях",
+      enableAlerts: "Включить критические уведомления"
     },
     // AI Chat
     aiChat: {
       title: "ИИ Консультация",
-      placeholder: "Введите ваше сообщение...",
+      healthAssistant: "Помощник по здоровью",
+      back: "← Назад",
+      generateReport: "Создать отчёт",
+      placeholder: "Опишите симптомы или задайте вопрос...",
       send: "Отправить",
       uploadFile: "Загрузить файл",
+      uploadPhoto: "📷 Загрузить фото",
+      uploadDocument: "📄 Загрузить документ",
       generating: "Генерация ответа...",
-      error: "ИИ сервис временно недоступен"
+      error: "ИИ сервис временно недоступен",
+      initialMessage: "Здравствуйте! Я ваш ИИ помощник по здоровью. Чем могу помочь?",
+      fileUploaded: "📄 Загружен документ:",
+      documentAnalyzed: "Документ проанализирован",
+      errorAnalyzing: "Ошибка при анализе файла"
     }
   },
   uz: {
@@ -249,11 +353,16 @@ export const translations = {
     // Home
     home: {
       title: "Salomatlik paneli",
+      welcome: "Xush kelibsiz,",
       search: "Qidirish...",
+      searchPlaceholder: "Shifokor yoki mutaxassis topish",
       nearby: "Yaqin atrofdagi",
-      appointments: "Qabul",
-      today: "Bugun",
-      tomorrow: "Ertaga"
+      seeAll: "Barchasi",
+      appointments: "Yaqinlashib kelayotgan qabullar",
+      noAppointments: "Yaqinlashib kelayotgan qabullar yo'q",
+      goodToKnow: "Bilish foydali",
+      covidUpdates: "COVID bo'yicha so'nggi yangiliklar",
+      covidSubtitle: "Kunlik COVID yangiliklarini olish uchun obuna bo'ling"
     },
     // Profile
     profile: {
@@ -299,7 +408,24 @@ export const translations = {
       metric: "Ko'rsatkich",
       value: "Qiymat",
       date: "Sana",
-      noData: "Ma'lumot yo'q"
+      noData: "Ma'lumot yo'q",
+      noDataHint: "Grafikni ko'rish uchun ko'rsatkichlar qo'shing",
+      recordNew: "Yangi ko'rsatkich yozish",
+      addManual: "+ Qo'lda qo'shish",
+      type: "Turi",
+      notes: "Eslatmalar (ixtiyoriy)",
+      notesPlaceholder: "Qo'shimcha eslatmalar...",
+      saveMetric: "Ko'rsatkichni saqlash",
+      current: "Joriy:",
+      normalRange: "Oddiy diapazon:",
+      pulse: "Nabz",
+      sleep: "Uyqu",
+      weight: "Vazn",
+      pressure: "Qon bosimi",
+      systolic: "Qon bosimi (Sistolik)",
+      diastolic: "Qon bosimi (Diastolik)",
+      sugar: "Qondagi shakar",
+      unit: "Birlik"
     },
     // Documents
     documents: {
@@ -310,23 +436,53 @@ export const translations = {
     },
     // Reminders
     reminders: {
-      title: "Eslatmalar",
-      medications: "Dori-darmonlar",
-      habits: "Odatlar",
+      title: "Salomatlik eslatmalari",
       addReminder: "Eslatma qo'shish",
+      addNew: "Yangi eslatma qo'shish",
+      type: "Turi",
       name: "Nomi",
+      nameRequired: "Iltimos, nom kiriting",
+      dosage: "Dozasi",
       time: "Vaqt",
-      completed: "Bajarildi",
-      pending: "Kutilmoqda"
+      frequency: "Chastota",
+      daily: "Kunlik",
+      every2Hours: "Har 2 soatda",
+      every4Hours: "Har 4 soatda",
+      weekly: "Haftalik",
+      loading: "Eslatmalar yuklanmoqda...",
+      empty: "Hozircha eslatmalar yo'q. Birinchisini qo'shing!",
+      deleteConfirm: "Bu eslatmani o'chirishni xohlaysizmi?",
+      markCompleted: "Bajarilgan deb belgilash",
+      deleteReminder: "Eslatmani o'chirish",
+      errorMarking: "Eslatmani belgilashda xatolik",
+      errorAdding: "Eslatma qo'shishda xatolik",
+      errorDeleting: "Eslatmani o'chirishda xatolik",
+      medication: "💊 Dori-darmon",
+      water: "💧 Suv ichish",
+      vitamin: "🌅 Vitamin",
+      walk: "🚶 Jismoniy faollik",
+      other: "✅ Boshqa odat",
+      criticalAlerts: "Kritik salomatlik ogohlantirishlari",
+      criticalAlertsDesc: "Kritik ko'rsatkichlar bo'lganda ishonchli kontaktlarga avtomatik xabar yuborish",
+      enableAlerts: "Kritik ogohlantirishlarni yoqish"
     },
     // AI Chat
     aiChat: {
       title: "AI Maslahat",
-      placeholder: "Xabaringizni kiriting...",
+      healthAssistant: "Salomatlik yordamchisi",
+      back: "← Orqaga",
+      generateReport: "Hisobot yaratish",
+      placeholder: "Alomatlarni tasvirlang yoki savol bering...",
       send: "Yuborish",
       uploadFile: "Fayl yuklash",
+      uploadPhoto: "📷 Rasm yuklash",
+      uploadDocument: "📄 Hujjat yuklash",
       generating: "Javob yaratilmoqda...",
-      error: "AI xizmati vaqtincha mavjud emas"
+      error: "AI xizmati vaqtincha mavjud emas",
+      initialMessage: "Salom! Men sizning AI salomatlik yordamchingizman. Qanday yordam bera olaman?",
+      fileUploaded: "📄 Hujjat yuklandi:",
+      documentAnalyzed: "Hujjat tahlil qilindi",
+      errorAnalyzing: "Faylni tahlil qilishda xatolik"
     }
   }
 };

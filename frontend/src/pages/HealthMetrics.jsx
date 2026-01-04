@@ -7,65 +7,70 @@ import {
 import Card from "../ui/components/Card";
 import { api } from "../services/api";
 import { AuthContext } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 import "../styles/HealthMetrics.css";
 
 export default function HealthMetrics() {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const { t } = useLanguage();
   const [selectedMetric, setSelectedMetric] = useState("pulse");
   const [chartData, setChartData] = useState([]);
-  const [metrics, setMetrics] = useState([
-    {
-      id: "pulse",
-      name: "Pulse",
-      icon: "❤️",
-      unit: "bpm",
-      current: 0,
-      normal: "60-100",
-      trend: "",
-      color: "#e74c3c"
-    },
-    {
-      id: "sleep",
-      name: "Sleep",
-      icon: "😴",
-      unit: "hours",
-      current: 0,
-      normal: "7-9",
-      trend: "",
-      color: "#3498db"
-    },
-    {
-      id: "weight",
-      name: "Weight",
-      icon: "⚖️",
-      unit: "kg",
-      current: 0,
-      normal: "65-75",
-      trend: "",
-      color: "#f39c12"
-    },
-    {
-      id: "pressure",
-      name: "Blood Pressure",
-      icon: "📊",
-      unit: "mmHg",
-      current: "-",
-      normal: "< 120/80",
-      trend: "",
-      color: "#9b59b6"
-    },
-    {
-      id: "sugar",
-      name: "Blood Sugar",
-      icon: "🍬",
-      unit: "mmol/L",
-      current: 0,
-      normal: "4-6",
-      trend: "",
-      color: "#9b59b6"
-    }
-  ]);
+  const [metrics, setMetrics] = useState(() => {
+    // This will be updated when language changes
+    return [
+      {
+        id: "pulse",
+        name: "Pulse",
+        icon: "❤️",
+        unit: "bpm",
+        current: 0,
+        normal: "60-100",
+        trend: "",
+        color: "#e74c3c"
+      },
+      {
+        id: "sleep",
+        name: "Sleep",
+        icon: "😴",
+        unit: "hours",
+        current: 0,
+        normal: "7-9",
+        trend: "",
+        color: "#3498db"
+      },
+      {
+        id: "weight",
+        name: "Weight",
+        icon: "⚖️",
+        unit: "kg",
+        current: 0,
+        normal: "65-75",
+        trend: "",
+        color: "#f39c12"
+      },
+      {
+        id: "pressure",
+        name: "Blood Pressure",
+        icon: "📊",
+        unit: "mmHg",
+        current: "-",
+        normal: "< 120/80",
+        trend: "",
+        color: "#9b59b6"
+      },
+      {
+        id: "sugar",
+        name: "Blood Sugar",
+        icon: "🍬",
+        unit: "mmol/L",
+        current: 0,
+        normal: "4-6",
+        trend: "",
+        color: "#9b59b6"
+      }
+    ];
+  });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -74,6 +79,18 @@ export default function HealthMetrics() {
     unit: "",
     notes: ""
   });
+
+  useEffect(() => {
+    // Update metric names when language changes
+    setMetrics(prev => prev.map(m => ({
+      ...m,
+      name: m.id === "pulse" ? t("health.pulse") :
+            m.id === "sleep" ? t("health.sleep") :
+            m.id === "weight" ? t("health.weight") :
+            m.id === "pressure" ? t("health.pressure") :
+            m.id === "sugar" ? t("health.sugar") : m.name
+    })));
+  }, [t]);
 
   useEffect(() => {
     // #region agent log
@@ -260,7 +277,7 @@ export default function HealthMetrics() {
       loadChartData();
     } catch (error) {
       console.error("Error adding metric:", error);
-      alert("Ошибка при добавлении показателя");
+      alert(t("common.error"));
     }
   };
 
@@ -287,7 +304,7 @@ export default function HealthMetrics() {
   return (
     <div className="health-metrics-container">
       <div className="metrics-header">
-        <h1>Health Metrics</h1>
+        <h1>{t("health.title")}</h1>
       </div>
 
       {/* Quick Stats */}
@@ -317,8 +334,8 @@ export default function HealthMetrics() {
         <div className="chart-container">
           {chartData.length === 0 ? (
             <div className="no-data">
-              <p>Нет данных для отображения</p>
-              <p className="hint">Добавьте показатели, чтобы увидеть график</p>
+              <p>{t("health.noData")}</p>
+              <p className="hint">{t("health.noDataHint")}</p>
             </div>
           ) : selectedMetric === "pressure" ? (
             <ResponsiveContainer width="100%" height={250}>
@@ -395,13 +412,13 @@ export default function HealthMetrics() {
 
         <div className="metric-info">
           <div className="info-item">
-            <span className="info-label">Current:</span>
+            <span className="info-label">{t("health.current")}</span>
             <span className="info-value">
               {metrics.find(m => m.id === selectedMetric)?.current}
             </span>
           </div>
           <div className="info-item">
-            <span className="info-label">Normal Range:</span>
+            <span className="info-label">{t("health.normalRange")}</span>
             <span className="info-value">
               {metrics.find(m => m.id === selectedMetric)?.normal}
             </span>
@@ -412,41 +429,41 @@ export default function HealthMetrics() {
       {/* Add New Metric */}
       <Card className="add-metric-card">
         <div className="add-metric-header">
-          <h3>Record New Metric</h3>
+          <h3>{t("health.recordNew")}</h3>
           <button className="add-metric-btn" onClick={() => setShowAddForm(!showAddForm)}>
-            {showAddForm ? "Cancel" : "+ Add Manual Entry"}
+            {showAddForm ? t("common.cancel") : t("health.addManual")}
           </button>
         </div>
         
         {showAddForm && (
           <form onSubmit={handleAddMetric} className="metric-form">
             <div className="form-group">
-              <label>Type</label>
+              <label>{t("health.type")}</label>
               <select
                 value={formData.type}
                 onChange={e => setFormData({ ...formData, type: e.target.value, unit: getDefaultUnit(e.target.value) })}
               >
-                <option value="pulse">Pulse</option>
-                <option value="sleep">Sleep</option>
-                <option value="weight">Weight</option>
-                <option value="systolic">Blood Pressure (Systolic)</option>
-                <option value="diastolic">Blood Pressure (Diastolic)</option>
-                <option value="sugar">Blood Sugar</option>
+                <option value="pulse">{t("health.pulse")}</option>
+                <option value="sleep">{t("health.sleep")}</option>
+                <option value="weight">{t("health.weight")}</option>
+                <option value="systolic">{t("health.systolic")}</option>
+                <option value="diastolic">{t("health.diastolic")}</option>
+                <option value="sugar">{t("health.sugar")}</option>
               </select>
             </div>
             <div className="form-group">
-              <label>Value</label>
+              <label>{t("health.value")}</label>
               <input
                 type="number"
                 step="0.1"
                 value={formData.value}
                 onChange={e => setFormData({ ...formData, value: e.target.value })}
-                placeholder="Enter value"
+                placeholder={t("health.value")}
                 required
               />
             </div>
             <div className="form-group">
-              <label>Unit</label>
+              <label>{t("health.unit") || "Unit"}</label>
               <input
                 type="text"
                 value={formData.unit}
@@ -455,14 +472,14 @@ export default function HealthMetrics() {
               />
             </div>
             <div className="form-group">
-              <label>Notes (optional)</label>
+              <label>{t("health.notes")}</label>
               <textarea
                 value={formData.notes}
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes..."
+                placeholder={t("health.notesPlaceholder")}
               />
             </div>
-            <button type="submit" className="submit-btn">Save Metric</button>
+            <button type="submit" className="submit-btn">{t("health.saveMetric")}</button>
           </form>
         )}
       </Card>

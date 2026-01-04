@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
+import { useLanguage } from "../context/LanguageContext";
 import "../styles/Home.css";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -68,7 +70,7 @@ export default function Home() {
       {/* Header Section */}
       <div className="home-header">
         <div className="welcome-section">
-          <div className="greeting">Welcome back,</div>
+          <div className="greeting">{t("home.welcome")}</div>
           <h1 className="user-name">{userName}</h1>
         </div>
         <button className="notification-btn" onClick={() => navigate("/profile")}>
@@ -81,7 +83,7 @@ export default function Home() {
         <span className="search-icon-left">🔍</span>
         <input
           type="text"
-          placeholder="Find a doctor or specialty"
+          placeholder={t("home.searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="search-input"
@@ -91,9 +93,9 @@ export default function Home() {
       {/* Upcoming Appointments Section */}
       <div className="section">
         <div className="section-header">
-          <h3>Upcoming Appointments</h3>
+          <h3>{t("home.appointments")}</h3>
           <a href="#" className="see-all-link" onClick={() => navigate("/health")}>
-            See All
+            {t("home.seeAll")}
           </a>
         </div>
         {data?.appointments && data.appointments.length > 0 ? (
@@ -119,15 +121,15 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <p style={{ textAlign: "center", color: "#999" }}>No upcoming appointments</p>
+          <p style={{ textAlign: "center", color: "#999" }}>{t("home.noAppointments")}</p>
         )}
       </div>
 
       {/* Nearby Section */}
       <div className="section">
         <div className="section-header">
-          <h3>Nearby</h3>
-          <a href="#" className="see-all-link">See All</a>
+          <h3>{t("home.nearby")}</h3>
+          <a href="#" className="see-all-link">{t("home.seeAll")}</a>
         </div>
         {data?.nearby && data.nearby.length > 0 ? (
           <div className="nearby-list">
@@ -150,8 +152,8 @@ export default function Home() {
       {/* Good to Know Section */}
       <div className="section" style={{ paddingBottom: 100 }}>
         <div className="section-header">
-          <h3>Good to Know</h3>
-          <a href="#" className="see-all-link">See All</a>
+          <h3>{t("home.goodToKnow")}</h3>
+          <a href="#" className="see-all-link">{t("home.seeAll")}</a>
         </div>
         {data?.alerts && data.alerts.length > 0 ? (
           <div className="alerts-list">
@@ -159,8 +161,8 @@ export default function Home() {
               <Card key={a.id} className="alert-card">
                 <div className="alert-icon">{a.icon || "📢"}</div>
                 <div className="alert-text">
-                  <div className="alert-title">{a.text}</div>
-                  <div className="alert-subtitle">{a.subtitle}</div>
+                  <div className="alert-title">{t("home.covidUpdates")}</div>
+                  <div className="alert-subtitle">{t("home.covidSubtitle")}</div>
                 </div>
               </Card>
             ))}

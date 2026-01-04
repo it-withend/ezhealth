@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import { useLanguage } from "../context/LanguageContext";
 import "../styles/AIChat.css";
 
 export default function AIChat() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hello! I'm your AI health assistant. How can I help you today?",
+      text: t("aiChat.initialMessage"),
       sender: "bot",
       timestamp: new Date()
     }
@@ -110,18 +112,10 @@ export default function AIChat() {
       console.error("Error:", error);
       let errorMessage = error.response?.data?.error || error.message || "Unknown error";
       
-      // Translate common error messages to Russian
-      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota")) {
-        errorMessage = "Превышен лимит использования AI API. Пожалуйста, проверьте баланс и квоты вашего аккаунта. Сервис временно недоступен.";
-      } else if (errorMessage.includes("authentication failed") || errorMessage.includes("API key")) {
-        errorMessage = "Ошибка аутентификации AI API. Пожалуйста, проверьте настройки API ключа.";
-      } else if (errorMessage.includes("temporarily unavailable")) {
-        errorMessage = "AI сервис временно недоступен. Пожалуйста, попробуйте позже.";
-      }
-      
+      // Use translated error message from backend or fallback
       const botMessage = {
         id: messages.length + 2,
-        text: `Извините, произошла ошибка: ${errorMessage}`,
+        text: `${t("common.error")}: ${errorMessage}`,
         sender: "bot",
         timestamp: new Date()
       };
@@ -134,12 +128,12 @@ export default function AIChat() {
   const handleFileUpload = async (file) => {
     if (!file) return;
 
-    const userMessage = {
-      id: messages.length + 1,
-      text: `📄 Загружен документ: ${file.name}`,
-      sender: "user",
-      timestamp: new Date()
-    };
+      const userMessage = {
+        id: messages.length + 1,
+        text: `${t("aiChat.fileUploaded")} ${file.name}`,
+        sender: "user",
+        timestamp: new Date()
+      };
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
 
@@ -155,25 +149,18 @@ export default function AIChat() {
 
       const botMessage = {
         id: messages.length + 2,
-        text: response.data.analysis || "Документ проанализирован",
+        text: response.data.analysis || t("aiChat.documentAnalyzed"),
         sender: "bot",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error("File upload error:", error);
-      let errorMessage = error.response?.data?.error || error.message || "Ошибка при анализе файла";
-      
-      // Translate common error messages
-      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota")) {
-        errorMessage = "Превышен лимит использования AI API. Пожалуйста, проверьте баланс и квоты вашего аккаунта.";
-      } else if (errorMessage.includes("authentication failed") || errorMessage.includes("API key")) {
-        errorMessage = "Ошибка аутентификации AI API. Пожалуйста, проверьте настройки API ключа.";
-      }
+      let errorMessage = error.response?.data?.error || error.message || t("aiChat.errorAnalyzing");
       
       const botMessage = {
         id: messages.length + 2,
-        text: `Ошибка: ${errorMessage}`,
+        text: `${t("common.error")}: ${errorMessage}`,
         sender: "bot",
         timestamp: new Date()
       };
@@ -191,10 +178,10 @@ export default function AIChat() {
     <div className="ai-chat-container">
       <div className="ai-chat-header">
         <button className="back-btn" onClick={() => navigate("/home")}>
-          ← Back
+          {t("aiChat.back")}
         </button>
-        <h1>Health Assistant</h1>
-        <button className="report-btn" onClick={handleGenerateReport} title="Generate Report">
+        <h1>{t("aiChat.healthAssistant")}</h1>
+        <button className="report-btn" onClick={handleGenerateReport} title={t("aiChat.generateReport")}>
           📋
         </button>
       </div>
@@ -225,7 +212,7 @@ export default function AIChat() {
           {showUploadOptions && (
             <div className="upload-menu">
               <label style={{ cursor: 'pointer', display: 'block', padding: '8px' }}>
-                📷 Upload Photo
+                {t("aiChat.uploadPhoto")}
                 <input
                   type="file"
                   accept="image/*"
@@ -239,7 +226,7 @@ export default function AIChat() {
                 />
               </label>
               <label style={{ cursor: 'pointer', display: 'block', padding: '8px' }}>
-                📄 Upload Document
+                {t("aiChat.uploadDocument")}
                 <input
                   type="file"
                   accept=".pdf,.doc,.docx,.txt"
@@ -252,7 +239,7 @@ export default function AIChat() {
                   }}
                 />
               </label>
-              <button onClick={() => setShowUploadOptions(false)}>Cancel</button>
+              <button onClick={() => setShowUploadOptions(false)}>{t("common.cancel")}</button>
             </div>
           )}
         </div>
@@ -267,7 +254,7 @@ export default function AIChat() {
           </button>
           <input
             type="text"
-            placeholder="Describe your symptoms or ask a question..."
+            placeholder={t("aiChat.placeholder")}
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyPress={e => e.key === "Enter" && handleSendMessage()}
@@ -277,7 +264,7 @@ export default function AIChat() {
             className="send-btn"
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || loading}
-            title="Send message"
+            title={t("aiChat.send")}
           >
             ➤
           </button>
