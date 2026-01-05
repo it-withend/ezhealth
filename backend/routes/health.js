@@ -59,6 +59,8 @@ router.get("/metrics", authenticate, async (req, res) => {
 
     const metrics = await dbAll(sql, params);
 
+    console.log(`📊 Returning ${metrics.length} metrics for user ${userId}`);
+
     res.json({
       success: true,
       metrics

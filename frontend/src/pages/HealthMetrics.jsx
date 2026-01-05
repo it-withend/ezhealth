@@ -74,7 +74,7 @@ export default function HealthMetrics() {
   });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showSyncApps, setShowSyncApps] = useState(false);
+  const [showSyncApps, setShowSyncApps] = useState(true); // Show by default
   const [formData, setFormData] = useState({
     type: "pulse",
     value: "",
@@ -117,6 +117,17 @@ export default function HealthMetrics() {
     }
   }, [user, selectedMetric]);
 
+  // Force reload metrics after a short delay when component is visible
+  useEffect(() => {
+    if (user && !loading) {
+      const timer = setTimeout(() => {
+        console.log("Auto-reloading metrics...");
+        loadMetrics();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading]);
+
   const loadMetrics = async () => {
     if (!user) return;
     // #region agent log
@@ -158,19 +169,28 @@ export default function HealthMetrics() {
       // #endregion
       
       const allMetrics = response.data.metrics || [];
-      console.log("Loaded metrics:", allMetrics);
+      console.log("Loaded metrics from API:", allMetrics);
+      console.log("Total metrics loaded:", allMetrics.length);
       
       // Get latest values for each metric type
       const latestValues = {};
       allMetrics.forEach(m => {
         const metricType = m.type;
-        if (!latestValues[metricType] || new Date(m.recorded_at) > new Date(latestValues[metricType].recorded_at)) {
+        const recordedAt = m.recorded_at ? new Date(m.recorded_at) : new Date(0);
+        const existing = latestValues[metricType];
+        const existingDate = existing && existing.recorded_at ? new Date(existing.recorded_at) : new Date(0);
+        
+        if (!existing || recordedAt > existingDate) {
           latestValues[metricType] = m;
         }
       });
 
-      console.log("Latest values:", latestValues);
-      console.log("All metrics from API:", allMetrics);
+      console.log("Latest values by type:", latestValues);
+      console.log("Latest values details:", Object.keys(latestValues).map(type => ({
+        type,
+        value: latestValues[type].value,
+        recorded_at: latestValues[type].recorded_at
+      })));
 
       // Update metrics with latest values
       setMetrics(prev => prev.map(m => {
@@ -186,7 +206,7 @@ export default function HealthMetrics() {
         const apiType = typeMap[m.id];
         const latest = latestValues[apiType];
         
-        if (latest) {
+        if (latest && latest.value !== null && latest.value !== undefined) {
           let current = latest.value;
           
           // For pressure, check for systolic and diastolic separately
@@ -209,15 +229,16 @@ export default function HealthMetrics() {
             }
           } else {
             // For other metrics, use the value directly
-            current = latest.value;
+            current = parseFloat(latest.value) || 0;
           }
           
-          console.log(`Updated ${m.id}: ${current}`);
+          console.log(`✅ Updated ${m.id} (${m.name}): ${current} ${m.unit} (from type: ${apiType})`);
           return { ...m, current };
         }
         
         // No data found, keep default
         const defaultValue = m.id === "pressure" ? "-" : 0;
+        console.log(`⚠️ No data for ${m.id} (${m.name}), keeping default: ${defaultValue}`);
         return { ...m, current: defaultValue };
       }));
     } catch (error) {
@@ -323,9 +344,11 @@ export default function HealthMetrics() {
       
       // Reload data after adding - wait a bit for DB to update
       setTimeout(async () => {
+        console.log("Reloading metrics after add...");
         await loadMetrics();
         await loadChartData();
-      }, 300);
+        console.log("Metrics reloaded");
+      }, 500);
     } catch (error) {
       console.error("Error adding metric:", error);
       console.error("Error details:", error.response?.data);
@@ -358,6 +381,28 @@ export default function HealthMetrics() {
       <div className="metrics-header">
         <h1>{t("health.title")}</h1>
       </div>
+
+      {/* Health App Sync Section */}
+      <Card className="sync-card" style={{ marginBottom: '20px', padding: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <h3 style={{ margin: 0 }}>{t("health.syncApps") || "Sync with Health Apps"}</h3>
+          <button 
+            onClick={() => setShowSyncApps(!showSyncApps)}
+            style={{ 
+              padding: '8px 16px', 
+              borderRadius: '8px', 
+              border: 'none', 
+              background: '#2D9B8C', 
+              color: 'white', 
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            {showSyncApps ? (t("common.hide") || "Hide") : (t("common.show") || "Show")}
+          </button>
+        </div>
+        {showSyncApps && <HealthAppSync />}
+      </Card>
 
       {/* Quick Stats */}
       <div className="quick-stats">
