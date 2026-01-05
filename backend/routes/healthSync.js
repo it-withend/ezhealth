@@ -367,6 +367,9 @@ router.post('/sync/:appName', async (req, res) => {
     const { days = 7 } = req.query;
 
     console.log(`🔄 POST /health/sync/sync/${appName} - userId=${userId}, days=${days}`);
+    console.log(`🔄 Request body:`, req.body);
+    console.log(`🔄 Request query:`, req.query);
+    console.log(`🔄 Request params:`, req.params);
 
     if (!SUPPORTED_APPS[appName]) {
       console.log(`🔄 ERROR: Invalid app name: ${appName}`);

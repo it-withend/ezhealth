@@ -333,7 +333,30 @@ Please refer to the app's official documentation for OAuth setup instructions.`;
                 </p>
                 <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
                   <button
-                    onClick={() => handleSync(app.id)}
+                    onClick={() => {
+                      // #region agent log
+                      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          location: 'HealthAppSync.jsx:onClick',
+                          message: 'SYNC BUTTON CLICKED',
+                          data: { 
+                            appId: app.id,
+                            appName: app.name,
+                            isConnected: app.connected,
+                            hasUser: !!user,
+                            userId: user?.id
+                          },
+                          timestamp: Date.now(),
+                          sessionId: 'debug-session',
+                          runId: 'run1',
+                          hypothesisId: 'H1'
+                        })
+                      }).catch(() => {});
+                      // #endregion
+                      handleSync(app.id);
+                    }}
                     disabled={syncing[app.id]}
                     style={{
                       padding: '8px',
