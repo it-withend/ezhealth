@@ -120,7 +120,7 @@ export async function authenticate(req, res, next) {
         let user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [telegramId]);
         
         if (!user) {
-          // Auto-create user if not exists
+          // Auto-create user if not exists (only once)
           console.log('🔐 Auth middleware: User not found in DB, auto-creating...');
           try {
             const result = await dbRun(
@@ -130,9 +130,17 @@ export async function authenticate(req, res, next) {
             user = await dbGet('SELECT * FROM users WHERE id = ?', [result.lastID]);
             console.log('🔐 Auth middleware: User auto-created:', user.id);
           } catch (createError) {
-            console.error('🔐 Auth middleware: Failed to auto-create user:', createError);
-            return res.status(401).json({ error: 'User creation failed', details: createError.message });
+            // If user already exists (race condition), fetch it
+            if (createError.message.includes('UNIQUE constraint')) {
+              console.log('🔐 Auth middleware: User already exists, fetching...');
+              user = await dbGet('SELECT * FROM users WHERE telegram_id = ?', [telegramId]);
+            } else {
+              console.error('🔐 Auth middleware: Failed to auto-create user:', createError);
+              return res.status(401).json({ error: 'User creation failed', details: createError.message });
+            }
           }
+        } else {
+          console.log('🔐 Auth middleware: User found in DB:', user.id);
         }
         
         if (user) {

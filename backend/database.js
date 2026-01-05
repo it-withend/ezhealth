@@ -6,34 +6,86 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let db = null;
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'health.db');
 
-export function getDatabase() {
-  if (!db) {
-    db = new sqlite3.Database(path.join(__dirname, 'health.db'), (err) => {
-      if (err) {
-        console.error('Error opening database:', err);
-      } else {
-        console.log('Connected to SQLite database');
-        // Enable foreign keys
-        db.run('PRAGMA foreign_keys = ON');
-      }
+let database = null;
+
+// Promisified database methods
+export const dbRun = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    database.run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve({ lastID: this.lastID, changes: this.changes });
     });
+  });
+};
+
+export const dbGet = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    database.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+};
+
+export const dbAll = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    database.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows || []);
+    });
+  });
+};
+
+// Migration function to add missing columns
+async function migrateDatabase() {
+  try {
+    // Check and add columns to users table
+    const userColumns = await dbAll("PRAGMA table_info(users)");
+    const userColumnNames = userColumns.map(col => col.name);
+    
+    const requiredUserColumns = {
+      email: 'TEXT',
+      phone: 'TEXT',
+      date_of_birth: 'TEXT',
+      blood_type: 'TEXT',
+      allergies: 'TEXT',
+      medical_conditions: 'TEXT'
+    };
+
+    for (const [columnName, columnType] of Object.entries(requiredUserColumns)) {
+      if (!userColumnNames.includes(columnName)) {
+        console.log(`📝 Adding column ${columnName} to users table...`);
+        await dbRun(`ALTER TABLE users ADD COLUMN ${columnName} ${columnType}`);
+      }
+    }
+
+    // Check and add source column to health_metrics table
+    const metricsColumns = await dbAll("PRAGMA table_info(health_metrics)");
+    const metricsColumnNames = metricsColumns.map(col => col.name);
+    
+    if (!metricsColumnNames.includes('source')) {
+      console.log('📝 Adding column source to health_metrics table...');
+      await dbRun(`ALTER TABLE health_metrics ADD COLUMN source TEXT DEFAULT 'manual'`);
+    }
+
+    console.log('✅ Database migration completed');
+  } catch (error) {
+    console.error('❌ Migration error:', error);
+    // Don't fail initialization if migration fails
   }
-  return db;
 }
 
 export function initDatabase() {
   return new Promise((resolve, reject) => {
-    const database = getDatabase();
-    
-    // Enable foreign keys
-    database.run('PRAGMA foreign_keys = ON', (err) => {
+    database = new sqlite3.Database(dbPath, (err) => {
       if (err) {
-        console.error('Error enabling foreign keys:', err);
+        console.error('Error opening database:', err);
         reject(err);
         return;
       }
+      console.log('Connected to SQLite database');
 
       // Users table
       database.run(`
@@ -85,13 +137,10 @@ export function initDatabase() {
             CREATE TABLE IF NOT EXISTS medical_analyses (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               user_id INTEGER NOT NULL,
-              title TEXT NOT NULL,
-              type TEXT,
-              file_path TEXT,
-              file_type TEXT,
+              type TEXT NOT NULL,
+              result TEXT,
+              date DATETIME DEFAULT CURRENT_TIMESTAMP,
               notes TEXT,
-              date DATE NOT NULL,
-              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
               FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
           `, (err) => {
@@ -101,92 +150,92 @@ export function initDatabase() {
               return;
             }
 
-            // Trusted contacts table
+            // Medications table
             database.run(`
-              CREATE TABLE IF NOT EXISTS trusted_contacts (
+              CREATE TABLE IF NOT EXISTS medications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                contact_telegram_id TEXT NOT NULL,
-                contact_name TEXT,
-                can_view_health_data BOOLEAN DEFAULT 1,
-                can_receive_alerts BOOLEAN DEFAULT 1,
+                name TEXT NOT NULL,
+                dosage TEXT,
+                frequency TEXT,
+                reminder_time TEXT,
+                is_active INTEGER DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                UNIQUE(user_id, contact_telegram_id)
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
               )
             `, (err) => {
               if (err) {
-                console.error('Error creating trusted_contacts table:', err);
+                console.error('Error creating medications table:', err);
                 reject(err);
                 return;
               }
 
-              // Medications table
+              // Medication logs table
               database.run(`
-                CREATE TABLE IF NOT EXISTS medications (
+                CREATE TABLE IF NOT EXISTS medication_logs (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  user_id INTEGER NOT NULL,
-                  name TEXT NOT NULL,
-                  dosage TEXT,
-                  frequency TEXT,
-                  reminder_time TEXT,
-                  is_active BOOLEAN DEFAULT 1,
-                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                  medication_id INTEGER NOT NULL,
+                  taken_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (medication_id) REFERENCES medications(id) ON DELETE CASCADE
                 )
               `, (err) => {
                 if (err) {
-                  console.error('Error creating medications table:', err);
+                  console.error('Error creating medication_logs table:', err);
                   reject(err);
                   return;
                 }
 
-                // Medication logs table
+                // Habits table
                 database.run(`
-                  CREATE TABLE IF NOT EXISTS medication_logs (
+                  CREATE TABLE IF NOT EXISTS habits (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    medication_id INTEGER NOT NULL,
-                    taken_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (medication_id) REFERENCES medications(id) ON DELETE CASCADE
+                    user_id INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    reminder_time TEXT,
+                    frequency TEXT,
+                    is_active INTEGER DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                   )
                 `, (err) => {
                   if (err) {
-                    console.error('Error creating medication_logs table:', err);
+                    console.error('Error creating habits table:', err);
                     reject(err);
                     return;
                   }
 
-                  // Habits table (for water, vitamins, walks, etc.)
+                  // Habit logs table
                   database.run(`
-                    CREATE TABLE IF NOT EXISTS habits (
+                    CREATE TABLE IF NOT EXISTS habit_logs (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id INTEGER NOT NULL,
-                      type TEXT NOT NULL,
-                      name TEXT NOT NULL,
-                      reminder_time TEXT,
-                      frequency TEXT,
-                      is_active BOOLEAN DEFAULT 1,
-                      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                      habit_id INTEGER NOT NULL,
+                      completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                      FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
                     )
                   `, (err) => {
                     if (err) {
-                      console.error('Error creating habits table:', err);
+                      console.error('Error creating habit_logs table:', err);
                       reject(err);
                       return;
                     }
 
-                    // Habit logs table
+                    // Trusted contacts table
                     database.run(`
-                      CREATE TABLE IF NOT EXISTS habit_logs (
+                      CREATE TABLE IF NOT EXISTS trusted_contacts (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        habit_id INTEGER NOT NULL,
-                        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+                        user_id INTEGER NOT NULL,
+                        contact_telegram_id TEXT NOT NULL,
+                        contact_name TEXT,
+                        can_view_health_data BOOLEAN DEFAULT 1,
+                        can_receive_alerts BOOLEAN DEFAULT 1,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                        UNIQUE(user_id, contact_telegram_id)
                       )
                     `, (err) => {
                       if (err) {
-                        console.error('Error creating habit_logs table:', err);
+                        console.error('Error creating trusted_contacts table:', err);
                         reject(err);
                         return;
                       }
@@ -223,12 +272,15 @@ export function initDatabase() {
                             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                             UNIQUE(user_id, app_name)
                           )
-                        `, (err) => {
+                        `, async (err) => {
                           if (err) {
                             console.error('Error creating health_app_sync table:', err);
                             reject(err);
                             return;
                           }
+
+                          // Run migrations to add missing columns
+                          await migrateDatabase();
 
                           // Create indexes
                           database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
@@ -281,35 +333,3 @@ export function initDatabase() {
     });
   });
 }
-
-// Promisified database methods
-export function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    const database = getDatabase();
-    database.run(sql, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
-}
-
-export function dbGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    const database = getDatabase();
-    database.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
-}
-
-export function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    const database = getDatabase();
-    database.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-}
-

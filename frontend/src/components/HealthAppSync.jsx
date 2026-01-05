@@ -30,17 +30,53 @@ export default function HealthAppSync() {
 
   const handleConnect = async (appId) => {
     try {
-      // In production, this would open OAuth flow
-      // For now, we'll use a mock token
-      const mockToken = `mock_token_${appId}_${Date.now()}`;
+      // Show instructions for connecting
+      const app = apps.find(a => a.id === appId);
+      let instructions = "";
       
-      await api.post("/health/sync/connect", {
-        appName: appId,
-        accessToken: mockToken
-      });
+      if (appId === "google_fit") {
+        instructions = `To connect Google Fit:
+1. Go to Google Cloud Console (https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable Google Fit API
+4. Create OAuth 2.0 credentials
+5. Copy the access token and paste it here
+
+For now, you can use a test token (will be implemented in production)`;
+      } else if (appId === "apple_health") {
+        instructions = `To connect Apple Health:
+1. Open Settings > Privacy & Security > Health
+2. Enable HealthKit sharing
+3. Grant permissions to this app
+4. The app will automatically sync data
+
+Note: Full integration requires iOS app development`;
+      } else if (appId === "mi_fit") {
+        instructions = `To connect Mi Fit:
+1. Open Mi Fit app
+2. Go to Profile > Settings > Third-party access
+3. Enable data sharing
+4. Authorize this app
+
+Note: Requires Xiaomi account and API access`;
+      } else {
+        instructions = `To connect ${app?.name}:
+Please refer to the app's documentation for OAuth setup instructions.`;
+      }
+
+      const useToken = window.confirm(instructions + "\n\nUse test token for now?");
       
-      alert(t("health.appConnected") || `${apps.find(a => a.id === appId)?.name} connected successfully!`);
-      loadApps();
+      if (useToken) {
+        const mockToken = `mock_token_${appId}_${Date.now()}`;
+        
+        await api.post("/health/sync/connect", {
+          appName: appId,
+          accessToken: mockToken
+        });
+        
+        alert(t("health.appConnected") || `${app?.name} connected successfully!`);
+        loadApps();
+      }
     } catch (error) {
       console.error("Error connecting app:", error);
       alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
@@ -48,6 +84,10 @@ export default function HealthAppSync() {
   };
 
   const handleDisconnect = async (appId) => {
+    if (!window.confirm(t("health.disconnectConfirm") || "Are you sure you want to disconnect this app?")) {
+      return;
+    }
+    
     try {
       await api.post("/health/sync/disconnect", { appName: appId });
       alert(t("health.appDisconnected") || `${apps.find(a => a.id === appId)?.name} disconnected`);
@@ -159,4 +199,3 @@ export default function HealthAppSync() {
     </div>
   );
 }
-

@@ -124,6 +124,7 @@ export const translations = {
       syncApps: "Sync with Health Apps",
       connect: "Connect",
       disconnect: "Disconnect",
+      disconnectConfirm: "Are you sure you want to disconnect this app?",
       syncNow: "Sync Now",
       lastSync: "Last sync",
       notSynced: "Not synced yet",
@@ -320,6 +321,7 @@ export const translations = {
       syncApps: "Синхронизация с приложениями здоровья",
       connect: "Подключить",
       disconnect: "Отключить",
+      disconnectConfirm: "Вы уверены, что хотите отключить это приложение?",
       syncNow: "Синхронизировать сейчас",
       lastSync: "Последняя синхронизация",
       notSynced: "Еще не синхронизировано",
@@ -512,7 +514,17 @@ export const translations = {
       systolic: "Qon bosimi (Sistolik)",
       diastolic: "Qon bosimi (Diastolik)",
       sugar: "Qondagi shakar",
-      unit: "Birlik"
+      unit: "Birlik",
+      syncApps: "Salomatlik ilovalari bilan sinxronlash",
+      connect: "Ulash",
+      disconnect: "Uzish",
+      disconnectConfirm: "Bu ilovani uzishni xohlaysizmi?",
+      syncNow: "Hozir sinxronlash",
+      lastSync: "Oxirgi sinxronlash",
+      notSynced: "Hali sinxronlanmagan",
+      appConnected: "Ilova muvaffaqiyatli ulandi",
+      appDisconnected: "Ilova uzildi",
+      syncSuccess: "Ma'lumotlar muvaffaqiyatli sinxronlandi"
     },
     // Documents
     documents: {
