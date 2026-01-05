@@ -19,10 +19,17 @@ export default function HealthAppSync() {
 
   const loadApps = async () => {
     try {
+      setLoading(true);
+      console.log("Loading health apps...");
       const response = await api.get("/health/sync/apps");
-      setApps(response.data.apps || []);
+      console.log("Health apps response:", response.data);
+      const appsData = response.data?.apps || [];
+      console.log(`Loaded ${appsData.length} health apps`);
+      setApps(appsData);
     } catch (error) {
       console.error("Error loading health apps:", error);
+      console.error("Error details:", error.response?.data);
+      setApps([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -52,13 +59,16 @@ For now, you can use a test token (will be implemented in production)`;
 
 Note: Full integration requires iOS app development`;
       } else if (appId === "mi_fit") {
-        instructions = `To connect Mi Fit:
-1. Open Mi Fit app
-2. Go to Profile > Settings > Third-party access
-3. Enable data sharing
-4. Authorize this app
+        instructions = `To connect Mi Fit (Xiaomi Health):
+1. Register at Xiaomi Developer Platform: https://dev.mi.com/
+2. Create an app and get Client ID
+3. Use OAuth 2.0 Authorization Code flow
+4. Request scopes: 1 (profile), 3 (openid)
+5. Get access token from: https://open.account.xiaomi.com/oauth2/authorize
 
-Note: Requires Xiaomi account and API access`;
+API Reference: https://dev.mi.com/docs/passport/en/open-api/
+
+Note: Requires Xiaomi developer account and API credentials`;
       } else {
         instructions = `To connect ${app?.name}:
 Please refer to the app's documentation for OAuth setup instructions.`;

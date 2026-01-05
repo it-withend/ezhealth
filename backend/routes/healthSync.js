@@ -45,6 +45,7 @@ const SUPPORTED_APPS = {
 router.get('/apps', async (req, res) => {
   try {
     const userId = req.userId;
+    console.log(`📱 Loading health apps for user ${userId}`);
     
     // Get user's connected apps from database
     const connectedApps = await dbAll(
@@ -53,6 +54,8 @@ router.get('/apps', async (req, res) => {
        WHERE user_id = ? AND sync_enabled = 1`,
       [userId]
     );
+
+    console.log(`📱 Found ${connectedApps.length} connected apps`);
 
     const apps = Object.keys(SUPPORTED_APPS).map(key => {
       const app = SUPPORTED_APPS[key];
@@ -68,10 +71,11 @@ router.get('/apps', async (req, res) => {
       };
     });
 
+    console.log(`📱 Returning ${apps.length} apps`);
     res.json({ apps });
   } catch (error) {
     console.error('Get apps error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 

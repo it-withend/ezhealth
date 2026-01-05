@@ -193,54 +193,59 @@ export default function HealthMetrics() {
       })));
 
       // Update metrics with latest values
-      setMetrics(prev => prev.map(m => {
-        // Map metric IDs to API types
-        const typeMap = {
-          pulse: "pulse",
-          sleep: "sleep",
-          weight: "weight",
-          pressure: "pressure", // Can be "pressure", "systolic", or "diastolic"
-          sugar: "sugar"
-        };
-        
-        const apiType = typeMap[m.id];
-        const latest = latestValues[apiType];
-        
-        if (latest && latest.value !== null && latest.value !== undefined) {
-          let current = latest.value;
+      setMetrics(prev => {
+        const updated = prev.map(m => {
+          // Map metric IDs to API types
+          const typeMap = {
+            pulse: "pulse",
+            sleep: "sleep",
+            weight: "weight",
+            pressure: "pressure", // Can be "pressure", "systolic", or "diastolic"
+            sugar: "sugar"
+          };
           
-          // For pressure, check for systolic and diastolic separately
-          if (m.id === "pressure") {
-            const systolic = latestValues["systolic"];
-            const diastolic = latestValues["diastolic"];
-            const pressure = latestValues["pressure"];
+          const apiType = typeMap[m.id];
+          const latest = latestValues[apiType];
+          
+          if (latest && latest.value !== null && latest.value !== undefined) {
+            let current = latest.value;
             
-            if (systolic && diastolic) {
-              // Both systolic and diastolic available
-              current = `${systolic.value}/${diastolic.value}`;
-            } else if (pressure) {
-              // Single pressure value
-              current = pressure.value;
-            } else if (systolic || diastolic) {
-              // Only one part available
-              current = systolic ? `${systolic.value}/-` : `-/${diastolic.value}`;
+            // For pressure, check for systolic and diastolic separately
+            if (m.id === "pressure") {
+              const systolic = latestValues["systolic"];
+              const diastolic = latestValues["diastolic"];
+              const pressure = latestValues["pressure"];
+              
+              if (systolic && diastolic) {
+                // Both systolic and diastolic available
+                current = `${systolic.value}/${diastolic.value}`;
+              } else if (pressure) {
+                // Single pressure value
+                current = pressure.value;
+              } else if (systolic || diastolic) {
+                // Only one part available
+                current = systolic ? `${systolic.value}/-` : `-/${diastolic.value}`;
+              } else {
+                current = "-";
+              }
             } else {
-              current = "-";
+              // For other metrics, use the value directly
+              current = parseFloat(latest.value) || 0;
             }
-          } else {
-            // For other metrics, use the value directly
-            current = parseFloat(latest.value) || 0;
+            
+            console.log(`✅ Updated ${m.id} (${m.name}): ${current} ${m.unit} (from type: ${apiType}, value: ${latest.value})`);
+            return { ...m, current };
           }
           
-          console.log(`✅ Updated ${m.id} (${m.name}): ${current} ${m.unit} (from type: ${apiType})`);
-          return { ...m, current };
-        }
+          // No data found, keep default
+          const defaultValue = m.id === "pressure" ? "-" : 0;
+          console.log(`⚠️ No data for ${m.id} (${m.name}), keeping default: ${defaultValue}`);
+          return { ...m, current: defaultValue };
+        });
         
-        // No data found, keep default
-        const defaultValue = m.id === "pressure" ? "-" : 0;
-        console.log(`⚠️ No data for ${m.id} (${m.name}), keeping default: ${defaultValue}`);
-        return { ...m, current: defaultValue };
-      }));
+        console.log("Final updated metrics:", updated.map(m => ({ id: m.id, name: m.name, current: m.current })));
+        return updated;
+      });
     } catch (error) {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
@@ -342,13 +347,21 @@ export default function HealthMetrics() {
       setFormData({ type: "pulse", value: "", unit: "", notes: "" });
       setShowAddForm(false);
       
-      // Reload data after adding - wait a bit for DB to update
-      setTimeout(async () => {
-        console.log("Reloading metrics after add...");
+      // Immediately reload data after adding
+      console.log("Reloading metrics after add...");
+      try {
         await loadMetrics();
         await loadChartData();
-        console.log("Metrics reloaded");
-      }, 500);
+        console.log("Metrics reloaded successfully");
+      } catch (reloadError) {
+        console.error("Error reloading metrics:", reloadError);
+        // Retry after delay
+        setTimeout(async () => {
+          console.log("Retrying metrics reload...");
+          await loadMetrics();
+          await loadChartData();
+        }, 1000);
+      }
     } catch (error) {
       console.error("Error adding metric:", error);
       console.error("Error details:", error.response?.data);
