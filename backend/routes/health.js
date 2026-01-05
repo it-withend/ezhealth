@@ -239,6 +239,66 @@ router.post("/metrics", authenticate, async (req, res) => {
   }
 });
 
+// Get metrics statistics for charts
+// IMPORTANT: This route must be defined BEFORE /metrics/:id to avoid route conflicts
+// Express matches routes in order, so /metrics/stats must come before /metrics/:id
+router.get("/metrics/stats", authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { type, days = 30 } = req.query;
+
+    console.log(`📈 GET /health/metrics/stats - userId=${userId}, type=${type}, days=${days}`);
+
+    if (!type) {
+      console.log(`📈 ERROR: type parameter is missing`);
+      return res.status(400).json({ error: 'type is required' });
+    }
+
+    const userIdInt = parseInt(userId, 10);
+    console.log(`📈 Getting stats: userId=${userId} -> userIdInt=${userIdInt} (type: ${typeof userIdInt}), type=${type}, days=${days}`);
+
+    // Debug: Check what metrics exist for this user
+    const allUserMetrics = await dbAll(
+      'SELECT id, user_id, typeof(user_id) as user_id_type, type, value FROM health_metrics WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) LIMIT 10',
+      [userIdInt]
+    );
+    console.log(`📈 All metrics for userId=${userIdInt}:`, allUserMetrics);
+
+    const metrics = await dbAll(
+      `SELECT value, recorded_at, unit 
+       FROM health_metrics 
+       WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) AND type = ? 
+       AND recorded_at >= datetime("now", "-${days} days")
+       ORDER BY recorded_at ASC`,
+      [userIdInt, type]
+    );
+
+    console.log(`📈 Found ${metrics.length} metrics for type ${type}`);
+
+    // Format for charts - return empty array if no data, not 404
+    const chartData = metrics.map(m => ({
+      date: new Date(m.recorded_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      value: parseFloat(m.value),
+      fullDate: m.recorded_at,
+      timestamp: new Date(m.recorded_at).getTime()
+    }));
+
+    // Sort by timestamp to ensure correct order
+    chartData.sort((a, b) => a.timestamp - b.timestamp);
+
+    console.log(`📈 Returning ${chartData.length} chart data points for type ${type}`);
+
+    res.json({
+      success: true,
+      data: chartData
+    });
+  } catch (error) {
+    console.error('📈 Get stats error:', error);
+    console.error('📈 Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get single metric
 router.get("/metrics/:id", authenticate, async (req, res) => {
   try {
@@ -300,60 +360,6 @@ router.delete("/metrics/:id", authenticate, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Delete metric error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get metrics statistics for charts
-router.get("/metrics/stats", authenticate, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { type, days = 30 } = req.query;
-
-    if (!type) {
-      return res.status(400).json({ error: 'type is required' });
-    }
-
-    console.log(`📈 Getting stats: userId=${userId}, type=${type}, days=${days}`);
-
-    const userIdInt = parseInt(userId, 10);
-    console.log(`📈 Getting stats: userId=${userId} -> userIdInt=${userIdInt} (type: ${typeof userIdInt}), type=${type}, days=${days}`);
-
-    // Debug: Check what metrics exist for this user
-    const allUserMetrics = await dbAll(
-      'SELECT id, user_id, typeof(user_id) as user_id_type, type, value FROM health_metrics WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) LIMIT 10',
-      [userIdInt]
-    );
-    console.log(`📈 All metrics for userId=${userIdInt}:`, allUserMetrics);
-
-    const metrics = await dbAll(
-      `SELECT value, recorded_at, unit 
-       FROM health_metrics 
-       WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) AND type = ? 
-       AND recorded_at >= datetime("now", "-${days} days")
-       ORDER BY recorded_at ASC`,
-      [userIdInt, type]
-    );
-
-    console.log(`📈 Found ${metrics.length} metrics for type ${type}`);
-
-    // Format for charts
-    const chartData = metrics.map(m => ({
-      date: new Date(m.recorded_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      value: parseFloat(m.value),
-      fullDate: m.recorded_at,
-      timestamp: new Date(m.recorded_at).getTime()
-    }));
-
-    // Sort by timestamp to ensure correct order
-    chartData.sort((a, b) => a.timestamp - b.timestamp);
-
-    res.json({
-      success: true,
-      data: chartData
-    });
-  } catch (error) {
-    console.error('Get stats error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
