@@ -119,14 +119,14 @@ export default function HealthMetrics() {
 
   // Force reload metrics after a short delay when component is visible
   useEffect(() => {
-    if (user && !loading) {
+    if (!loading) {
       const timer = setTimeout(() => {
         console.log("Auto-reloading metrics...");
         loadMetrics();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [user, loading]);
+  }, [loading]);
 
   // Log metrics state changes to track if setMetrics actually updates the state
   useEffect(() => {
@@ -150,29 +150,11 @@ export default function HealthMetrics() {
   }, [metrics]);
 
   const loadMetrics = async () => {
-    if (!user || !user.id) {
-      console.warn("⚠️ Cannot load metrics: user or user.id is missing", { user });
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'HealthMetrics.jsx:loadMetrics',
-          message: 'loadMetrics ABORTED - no user',
-          data: { user: user, hasUserId: !!user?.id },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'H1'
-        })
-      }).catch(() => {});
-      // #endregion
-      return;
-    }
-    
-    const frontendUserId = user.id;
+    // Backend uses middleware to get user_id from initData, so we don't need user.id
+    // But we still log if user is available for debugging
+    const frontendUserId = user?.id;
     const userIdType = typeof frontendUserId;
-    console.log(`📊 Loading metrics for user ID: ${frontendUserId} (type: ${userIdType})`);
+    console.log(`📊 Loading metrics (user from context: ${frontendUserId || 'null'}, backend will use initData)`);
     
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
@@ -182,10 +164,10 @@ export default function HealthMetrics() {
         location: 'HealthMetrics.jsx:loadMetrics',
         message: 'loadMetrics ENTRY',
         data: { 
+          hasUser: !!user,
           userId: frontendUserId, 
           userIdType: userIdType,
-          userIdString: String(frontendUserId),
-          userIdNumber: Number(frontendUserId)
+          note: 'Backend will use initData from headers to get user_id'
         },
         timestamp: Date.now(),
         sessionId: 'debug-session',
@@ -475,7 +457,7 @@ export default function HealthMetrics() {
   };
 
   const loadChartData = async () => {
-    if (!user) return;
+    // Backend uses middleware to get user_id from initData, so we don't need user check
     try {
       const response = await api.get("/health/metrics/stats", {
         params: { type: selectedMetric, days: 30 }
