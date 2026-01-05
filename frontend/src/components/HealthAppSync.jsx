@@ -14,21 +14,78 @@ export default function HealthAppSync() {
   const [selectedApp, setSelectedApp] = useState(null);
 
   useEffect(() => {
-    if (user) {
-      loadApps();
-    }
+    // Backend uses middleware to get user_id from initData, so we can load apps even without user context
+    loadApps();
   }, [user]);
 
   const loadApps = async () => {
     try {
       setLoading(true);
       console.log("Loading health apps...");
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthAppSync.jsx:loadApps',
+          message: 'loadApps ENTRY',
+          data: { hasUser: !!user, userId: user?.id },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
+      
       const response = await api.get("/health/sync/apps");
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthAppSync.jsx:loadApps',
+          message: 'loadApps API RESPONSE',
+          data: { 
+            status: response.status,
+            appsCount: response.data?.apps?.length || 0,
+            apps: response.data?.apps || []
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
+      
       console.log("Health apps response:", response.data);
       const appsData = response.data?.apps || [];
       console.log(`Loaded ${appsData.length} health apps`);
       setApps(appsData);
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthAppSync.jsx:loadApps',
+          message: 'loadApps ERROR',
+          data: { 
+            error: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            responseData: error.response?.data,
+            url: error.config?.url
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
       console.error("Error loading health apps:", error);
       console.error("Error details:", error.response?.data);
       setApps([]);
@@ -136,25 +193,30 @@ Please refer to the app's official documentation for OAuth setup instructions.`;
     setSyncing(prev => ({ ...prev, [appId]: true }));
     
     try {
-      // In production, this would fetch real data from the external API
-      // For now, we'll simulate syncing some sample data
-      const sampleMetrics = [
-        { type: "pulse", value: 72, unit: "bpm" },
-        { type: "sleep", value: 7.5, unit: "hours" },
-        { type: "weight", value: 70, unit: "kg" }
-      ];
-
-      await api.post("/health/sync/sync", {
-        appName: appId,
-        metrics: sampleMetrics
+      // Use the manual sync endpoint that fetches real data from the API
+      const response = await api.post(`/health/sync/sync/${appId}`, {}, {
+        params: { days: 7 } // Sync last 7 days
       });
       
-      alert(t("health.syncSuccess") || `Synced data from ${apps.find(a => a.id === appId)?.name}`);
-      // Reload page data
+      const syncedCount = response.data?.syncedCount || 0;
+      const message = response.data?.message || t("health.syncSuccess") || `Synced data from ${apps.find(a => a.id === appId)?.name}`;
+      
+      alert(`${message}\n${syncedCount > 0 ? `Synced ${syncedCount} metrics.` : 'No new data to sync.'}`);
+      
+      // Reload page data to show synced metrics
       window.location.reload();
     } catch (error) {
       console.error("Error syncing:", error);
-      alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
+      const errorMessage = error.response?.data?.error || error.message;
+      const needsReconnect = error.response?.data?.needsReconnect;
+      
+      if (needsReconnect) {
+        alert(t("health.reconnectRequired") || `Please reconnect ${apps.find(a => a.id === appId)?.name}. Your access token has expired.`);
+        // Optionally reload apps to show disconnect status
+        await loadApps();
+      } else {
+        alert(t("common.error") + ": " + errorMessage);
+      }
     } finally {
       setSyncing(prev => ({ ...prev, [appId]: false }));
     }
