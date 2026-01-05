@@ -95,21 +95,22 @@ export default function Profile() {
       if (response.data.profile) {
         const profileData = response.data.profile;
         
-        // Get Telegram user data
+        // Get Telegram user data for username only (username is read-only from Telegram)
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-        const telegramFirstName = tgUser?.first_name || profileData.first_name || "";
-        const telegramLastName = tgUser?.last_name || profileData.last_name || "";
         const telegramUsername = tgUser?.username || profileData.username || "";
         
-        // Build name from Telegram data or saved data
-        const telegramName = `${telegramFirstName} ${telegramLastName}`.trim();
-        const savedName = profileData.name || "";
+        // Use saved name from database (first_name + last_name) or build from profileData
+        // Priority: saved name in DB > profileData.name > Telegram name
+        const savedFirstName = profileData.first_name || "";
+        const savedLastName = profileData.last_name || "";
+        const savedNameFromDB = `${savedFirstName} ${savedLastName}`.trim();
+        const savedName = profileData.name || savedNameFromDB || "";
         
         const loadedProfile = {
-          name: savedName || telegramName || "",
+          name: savedName || "",
           email: profileData.email || "",
           phone: profileData.phone || "",
-          username: telegramUsername || profileData.username || "",
+          username: telegramUsername,
           dateOfBirth: profileData.dateOfBirth || profileData.date_of_birth || "",
           bloodType: profileData.bloodType || profileData.blood_type || "",
           allergies: profileData.allergies || "",
@@ -151,28 +152,8 @@ export default function Profile() {
         medicalConditions: formData.medicalConditions
       });
       
-      // Use updated profile from response or reload
-      if (response.data.profile) {
-        const profileData = response.data.profile;
-        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-        const telegramUsername = tgUser?.username || profileData.username || "";
-        
-        const updatedProfile = {
-          name: profileData.name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || "",
-          email: profileData.email || "",
-          phone: profileData.phone || "",
-          username: telegramUsername,
-          dateOfBirth: profileData.dateOfBirth || profileData.date_of_birth || "",
-          bloodType: profileData.bloodType || profileData.blood_type || "",
-          allergies: profileData.allergies || "",
-          medicalConditions: profileData.medicalConditions || profileData.medical_conditions || ""
-        };
-        setProfile(updatedProfile);
-        setFormData(updatedProfile);
-      } else {
-        // Fallback: reload from backend
-        await loadProfile();
-      }
+      // Always reload profile from backend after save to ensure we have latest data
+      await loadProfile();
       setIsEditing(false);
     } catch (error) {
       console.error("Error saving profile:", error);

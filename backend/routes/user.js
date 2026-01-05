@@ -15,11 +15,16 @@ router.get('/profile', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Build name from first_name and last_name (saved name)
+    const savedName = user.first_name || user.last_name 
+      ? `${user.first_name || ''} ${user.last_name || ''}`.trim() 
+      : '';
+    
     res.json({
       success: true,
       profile: {
         id: user.id,
-        name: user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'User',
+        name: savedName,
         email: user.email || '',
         phone: user.phone || '',
         dateOfBirth: user.date_of_birth || '',
@@ -27,9 +32,9 @@ router.get('/profile', authenticate, async (req, res) => {
         allergies: user.allergies || '',
         medicalConditions: user.medical_conditions || '',
         telegram_id: user.telegram_id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        username: user.username,
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        username: user.username || '',
         photo_url: user.photo_url
       }
     });

@@ -413,16 +413,20 @@
 
 .lang-btn {
   flex: 1;
-  min-width: 80px;
-  padding: 10px 16px;
+  min-width: 0;
+  padding: 10px 8px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   background: white;
   color: #666;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .lang-btn:hover {
