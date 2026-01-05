@@ -89,11 +89,18 @@ export default function Profile() {
   }, [user]);
 
   const loadProfile = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("loadProfile: No user, skipping");
+      return;
+    }
     try {
+      console.log("Loading profile from backend...");
       const response = await api.get("/user/profile");
+      console.log("Profile API response:", response.data);
+      
       if (response.data.profile) {
         const profileData = response.data.profile;
+        console.log("Profile data from API:", profileData);
         
         // Get Telegram user data for username only (username is read-only from Telegram)
         const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -116,11 +123,16 @@ export default function Profile() {
           allergies: profileData.allergies || "",
           medicalConditions: profileData.medicalConditions || profileData.medical_conditions || ""
         };
+        
+        console.log("Loaded profile:", loadedProfile);
         setProfile(loadedProfile);
         setFormData(loadedProfile);
+      } else {
+        console.warn("No profile data in response");
       }
     } catch (error) {
       console.error("Error loading profile:", error);
+      console.error("Error details:", error.response?.data);
       // Fallback: use Telegram data
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
       if (tgUser) {
@@ -134,6 +146,7 @@ export default function Profile() {
           allergies: "",
           medicalConditions: ""
         };
+        console.log("Using Telegram fallback profile:", fallbackProfile);
         setProfile(fallbackProfile);
         setFormData(fallbackProfile);
       }
@@ -142,6 +155,7 @@ export default function Profile() {
 
   const handleSaveProfile = async () => {
     try {
+      console.log("Saving profile with data:", formData);
       const response = await api.put("/user/profile", {
         name: formData.name,
         email: formData.email,
@@ -152,9 +166,18 @@ export default function Profile() {
         medicalConditions: formData.medicalConditions
       });
       
-      // Always reload profile from backend after save to ensure we have latest data
-      await loadProfile();
+      console.log("Profile save response:", response.data);
+      
+      // Update state immediately with formData (optimistic update)
+      setProfile(formData);
+      
+      // Close edit mode
       setIsEditing(false);
+      
+      // Then reload from backend to ensure consistency
+      setTimeout(async () => {
+        await loadProfile();
+      }, 100);
     } catch (error) {
       console.error("Error saving profile:", error);
       alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
