@@ -65,13 +65,15 @@ export default function HealthMetrics() {
     } else if (error) {
       const messages = {
         'oauth_denied': 'Authorization was denied. Please try again.',
-        'no_code': 'Authorization code not received. Please try again.',
+        'no_code': errorMessage || 'Authorization code not received. This usually means:\n1. Redirect URI does not match Google Cloud Console settings\n2. You did not complete authorization on Google\n\nPlease check that redirect URI in Google Cloud Console matches:\nhttps://ezhealth-l6zx.onrender.com/api/auth/google-fit/callback',
         'no_user': 'User not found. Please log in again.',
         'token_failed': 'Failed to exchange authorization code. Please try again.',
         'config_error': 'Server configuration error. Please contact support.',
         'server_error': 'Server error occurred. Please try again later.'
       };
-      alert(t("common.error") || "Error" + ": " + (errorMessage || messages[error] || 'Unknown error occurred'));
+      const errorMsg = errorMessage || messages[error] || 'Unknown error occurred';
+      console.error(`❌ OAuth error: ${error}`, errorMsg);
+      alert(t("common.error") || "Error" + ": " + errorMsg);
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }

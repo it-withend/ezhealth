@@ -168,7 +168,11 @@ router.get('/google-fit/callback', async (req, res) => {
   try {
     const { code, state, error } = req.query;
     
-    console.log(`🔐 Google Fit OAuth callback - code: ${code ? 'present' : 'missing'}, state: ${state}, error: ${error}`);
+    console.log(`🔐 Google Fit OAuth callback received`);
+    console.log(`🔐 Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+    console.log(`🔐 Query params:`, JSON.stringify(req.query, null, 2));
+    console.log(`🔐 Headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`🔐 Code: ${code ? 'present' : 'missing'}, State: ${state || 'undefined'}, Error: ${error || 'none'}`);
     
     // Get userId from state or initData header
     const initData = req.headers['x-telegram-init-data'];
@@ -203,8 +207,14 @@ router.get('/google-fit/callback', async (req, res) => {
     }
     
     if (!code) {
-      console.error('No authorization code received');
-      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=no_code`);
+      console.error('❌ No authorization code received from Google');
+      console.error('❌ This usually means:');
+      console.error('   1. User did not complete authorization on Google');
+      console.error('   2. Redirect URI does not match Google Cloud Console settings');
+      console.error('   3. OAuth consent screen is not properly configured');
+      console.error(`❌ Expected redirect URI: ${process.env.BACKEND_URL || 'https://ezhealth-l6zx.onrender.com'}/api/auth/google-fit/callback`);
+      console.error(`❌ Make sure this exact URI is added to Google Cloud Console > APIs & Services > Credentials > OAuth 2.0 Client IDs > Authorized redirect URIs`);
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=no_code&message=No authorization code received. Please check that redirect URI matches Google Cloud Console settings.`);
     }
     
     if (!userId) {
