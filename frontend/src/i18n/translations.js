@@ -191,7 +191,12 @@ export const translations = {
       errorAnalyzing: "Error analyzing file",
       errorRateLimit: "All AI models are currently busy. Please try again in a few minutes.",
       errorModelNotFound: "AI model not available. Please try again later.",
-      subtitle: "Get instant health advice"
+      subtitle: "Get instant health advice",
+      clearChat: "Clear chat",
+      clearChatConfirm: "Are you sure you want to clear the chat?",
+      example1: "I have a headache",
+      example2: "How to improve sleep?",
+      example3: "Nutrition advice"
     },
     // Onboarding
     onboarding: {
@@ -388,7 +393,12 @@ export const translations = {
       errorAnalyzing: "Ошибка при анализе файла",
       errorRateLimit: "Все ИИ модели сейчас заняты. Пожалуйста, попробуйте через несколько минут.",
       errorModelNotFound: "ИИ модель недоступна. Пожалуйста, попробуйте позже.",
-      subtitle: "Получите мгновенные советы по здоровью"
+      subtitle: "Получите мгновенные советы по здоровью",
+      clearChat: "Очистить чат",
+      clearChatConfirm: "Вы уверены, что хотите очистить чат?",
+      example1: "У меня болит голова",
+      example2: "Как улучшить сон?",
+      example3: "Советы по питанию"
     },
     // Onboarding
     onboarding: {
@@ -586,7 +596,12 @@ export const translations = {
       errorAnalyzing: "Faylni tahlil qilishda xatolik",
       errorRateLimit: "Barcha AI modellar hozir band. Iltimos, bir necha daqiqadan keyin qayta urinib ko'ring.",
       errorModelNotFound: "AI model mavjud emas. Iltimos, keyinroq qayta urinib ko'ring.",
-      subtitle: "Tezkor salomatlik maslahatlarini oling"
+      subtitle: "Tezkor salomatlik maslahatlarini oling",
+      clearChat: "Chatni tozalash",
+      clearChatConfirm: "Chatni tozalashni xohlaysizmi?",
+      example1: "Boshim og'riyapti",
+      example2: "Uyquni qanday yaxshilash mumkin?",
+      example3: "Ovqatlanish bo'yicha maslahatlar"
     },
     // Onboarding
     onboarding: {

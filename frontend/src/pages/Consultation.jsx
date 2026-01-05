@@ -2,26 +2,42 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { SendIcon, UploadIcon, CloseIcon } from "../ui/icons/icons";
 import { api } from "../services/api";
+import { useLanguage } from "../context/LanguageContext";
 import "./styles/Consultation.css";
 
 export default function Consultation() {
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Здравствуйте! Я ваш AI помощник по здоровью. Как я могу помочь?",
+      text: t("aiChat.initialMessage"),
       sender: "ai",
-      timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showUploadOptions, setShowUploadOptions] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Update initial message when language changes (only if no history)
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].sender === "ai" && messages[0].id === 1) {
+      setMessages([{
+        id: 1,
+        text: t("aiChat.initialMessage"),
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language, t]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -34,7 +50,7 @@ export default function Consultation() {
       id: Date.now(),
       text: userMessage,
       sender: "user",
-      timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     };
     setMessages(prev => [...prev, newUserMessage]);
 
@@ -83,9 +99,9 @@ export default function Consultation() {
 
       const aiMessage = {
         id: Date.now() + 1,
-        text: response.data.response || "Извините, не удалось получить ответ. Попробуйте еще раз.",
+        text: response.data.response || t("aiChat.error"),
         sender: "ai",
-        timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
@@ -106,22 +122,24 @@ export default function Consultation() {
       // #endregion
 
       console.error("AI API error:", error);
-      let errorMessage = error.response?.data?.error || error.message || "Ошибка при обращении к AI";
+      let errorMessage = error.response?.data?.error || error.message || t("aiChat.error");
       
-      // Translate common error messages to Russian
-      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota")) {
-        errorMessage = "Превышен лимит использования AI API. Пожалуйста, проверьте баланс и квоты вашего аккаунта. Сервис временно недоступен.";
+      // Use translated error messages
+      if (errorMessage.includes("quota exceeded") || errorMessage.includes("insufficient_quota") || errorMessage.includes("quota") || error.response?.status === 429) {
+        errorMessage = t("aiChat.errorRateLimit");
+      } else if (errorMessage.includes("not found") || errorMessage.includes("404") || error.response?.status === 404) {
+        errorMessage = t("aiChat.errorModelNotFound");
       } else if (errorMessage.includes("authentication failed") || errorMessage.includes("API key")) {
-        errorMessage = "Ошибка аутентификации AI API. Пожалуйста, проверьте настройки API ключа.";
+        errorMessage = t("aiChat.error");
       } else if (errorMessage.includes("temporarily unavailable")) {
-        errorMessage = "AI сервис временно недоступен. Пожалуйста, попробуйте позже.";
+        errorMessage = t("aiChat.error");
       }
       
       const aiMessage = {
         id: Date.now() + 1,
-        text: `Извините, произошла ошибка: ${errorMessage}`,
+        text: `${t("common.error")}: ${errorMessage}`,
         sender: "ai",
-        timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
       setMessages(prev => [...prev, aiMessage]);
     } finally {
@@ -130,13 +148,59 @@ export default function Consultation() {
   };
 
   const handleClearChat = () => {
-    if (window.confirm("Вы уверены, что хотите очистить чат?")) {
+    if (window.confirm(t("aiChat.clearChatConfirm") || "Вы уверены, что хотите очистить чат?")) {
       setMessages([{
         id: 1,
-        text: "Здравствуйте! Я ваш AI помощник по здоровью. Как я могу помочь?",
+        text: t("aiChat.initialMessage"),
         sender: "ai",
-        timestamp: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       }]);
+    }
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    const userMessage = {
+      id: Date.now(),
+      text: `${t("aiChat.fileUploaded")} ${file.name}`,
+      sender: "user",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setLoading(true);
+    setShowUploadOptions(false);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await api.post("/ai/analyze-file", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      const botMessage = {
+        id: Date.now() + 1,
+        text: response.data.analysis || t("aiChat.documentAnalyzed"),
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error("File upload error:", error);
+      let errorMessage = error.response?.data?.error || error.message || t("aiChat.errorAnalyzing");
+      
+      const botMessage = {
+        id: Date.now() + 1,
+        text: `${t("common.error")}: ${errorMessage}`,
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -147,15 +211,15 @@ export default function Consultation() {
   return (
     <div className="consultation-container">
       <div className="consultation-header">
-        <h1>AI Консультация</h1>
-        <p className="header-subtitle">Получите мгновенные советы по здоровью</p>
+        <h1>{t("aiChat.title")}</h1>
+        <p className="header-subtitle">{t("aiChat.subtitle")}</p>
         <button 
           className="report-btn" 
           onClick={handleGenerateReport} 
-          title="Сгенерировать отчет для врача"
+          title={t("aiChat.generateReport")}
           style={{ marginTop: '10px', padding: '8px 16px', background: '#2D9B8C', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
         >
-          📋 Создать отчет
+          📋 {t("aiChat.generateReport")}
         </button>
       </div>
 
@@ -163,17 +227,17 @@ export default function Consultation() {
         {messages.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">💬</div>
-            <h2>Добро пожаловать в AI Консультацию</h2>
-            <p>Задайте вопрос о своем здоровье и получите рекомендации</p>
+            <h2>{t("aiChat.title")}</h2>
+            <p>{t("aiChat.subtitle")}</p>
             <div className="example-questions">
-              <div className="example-chip" onClick={() => setInput("У меня болит голова")}>
-                💊 У меня болит голова
+              <div className="example-chip" onClick={() => setInput(t("aiChat.example1") || "У меня болит голова")}>
+                💊 {t("aiChat.example1") || "У меня болит голова"}
               </div>
-              <div className="example-chip" onClick={() => setInput("Как улучшить сон?")}>
-                😴 Как улучшить сон?
+              <div className="example-chip" onClick={() => setInput(t("aiChat.example2") || "Как улучшить сон?")}>
+                😴 {t("aiChat.example2") || "Как улучшить сон?"}
               </div>
-              <div className="example-chip" onClick={() => setInput("Советы по питанию")}>
-                🥗 Советы по питанию
+              <div className="example-chip" onClick={() => setInput(t("aiChat.example3") || "Советы по питанию")}>
+                🥗 {t("aiChat.example3") || "Советы по питанию"}
               </div>
             </div>
           </div>
@@ -204,19 +268,72 @@ export default function Consultation() {
       </div>
 
       <div className="consultation-input-area">
+        <div className="upload-options">
+          {showUploadOptions && (
+            <div className="upload-menu">
+              <label style={{ cursor: 'pointer', display: 'block', padding: '8px' }}>
+                {t("aiChat.uploadPhoto")}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                  }}
+                />
+              </label>
+              <label style={{ cursor: 'pointer', display: 'block', padding: '8px' }}>
+                {t("aiChat.uploadDocument")}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                  }}
+                />
+              </label>
+              <button onClick={() => setShowUploadOptions(false)}>{t("common.cancel")}</button>
+            </div>
+          )}
+        </div>
+
         {messages.length > 0 && (
-          <button className="clear-btn" onClick={handleClearChat} title="Очистить чат">
+          <button className="clear-btn" onClick={handleClearChat} title={t("aiChat.clearChat") || "Очистить чат"}>
             <CloseIcon />
           </button>
         )}
         
         <div className="input-wrapper">
+          <button
+            className="upload-btn"
+            onClick={() => setShowUploadOptions(!showUploadOptions)}
+            title={t("aiChat.uploadFile")}
+            style={{ 
+              width: '36px', 
+              height: '36px', 
+              borderRadius: '8px', 
+              background: '#F0F0F0', 
+              border: 'none', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            ➕
+          </button>
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyPress={e => e.key === "Enter" && handleSendMessage()}
-            placeholder="Опишите ваши симптомы или спросите совет..."
+            placeholder={t("aiChat.placeholder")}
             className="consultation-input"
             disabled={loading}
           />
@@ -224,7 +341,7 @@ export default function Consultation() {
             onClick={handleSendMessage}
             disabled={!input.trim() || loading}
             className="send-btn"
-            title="Отправить"
+            title={t("aiChat.send")}
           >
             <SendIcon />
           </button>
