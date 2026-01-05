@@ -28,16 +28,16 @@ export default function Consultation() {
 
   // Update initial message when language changes (only if no history)
   useEffect(() => {
-    if (messages.length === 1 && messages[0].sender === "ai" && messages[0].id === 1) {
+    const currentInitialMessage = t("aiChat.initialMessage");
+    if (messages.length === 1 && messages[0].sender === "ai" && messages[0].id === 1 && messages[0].text !== currentInitialMessage) {
       setMessages([{
         id: 1,
-        text: t("aiChat.initialMessage"),
+        text: currentInitialMessage,
         sender: "ai",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       }]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language, t]);
+  }, [language, t, messages]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
