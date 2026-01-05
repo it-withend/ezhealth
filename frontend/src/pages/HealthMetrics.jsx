@@ -662,91 +662,12 @@ export default function HealthMetrics() {
     }
   }, [selectedMetric]); // Only depend on selectedMetric
 
-  // Force reload metrics after a short delay when component is visible (only once)
-  const autoReloadDoneRef = useRef(false);
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'HealthMetrics.jsx:useEffect[loading]',
-        message: 'useEffect[loading] TRIGGERED',
-        data: { 
-          loading: loading,
-          autoReloadDoneRefCurrent: autoReloadDoneRef.current,
-          loadMetricsCallCount: loadMetricsCallCountRef.current
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'H2'
-      })
-    }).catch(() => {});
-    // #endregion
-
-    if (!loading && !autoReloadDoneRef.current) {
-      autoReloadDoneRef.current = true;
-      loadMetricsCallCountRef.current++;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'HealthMetrics.jsx:useEffect[loading]',
-          message: 'SCHEDULING auto-reload loadMetrics (1s delay)',
-          data: { 
-            loading: loading,
-            callCount: loadMetricsCallCountRef.current
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'H2'
-        })
-      }).catch(() => {});
-      // #endregion
-      const timer = setTimeout(() => {
-        console.log("Auto-reloading metrics (one time)...");
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: 'HealthMetrics.jsx:useEffect[loading]',
-            message: 'EXECUTING auto-reload loadMetrics',
-            data: { 
-              callCount: loadMetricsCallCountRef.current
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'H2'
-          })
-        }).catch(() => {});
-        // #endregion
-        loadMetrics();
-      }, 1000);
-      return () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: 'HealthMetrics.jsx:useEffect[loading]',
-            message: 'CLEANUP - clearing auto-reload timer',
-            data: {},
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'H2'
-          })
-        }).catch(() => {});
-        // #endregion
-        clearTimeout(timer);
-      };
-    }
-  }, [loading]);
+  // REMOVED: Auto-reload effect that was causing infinite loops
+  // The effect with [loading] dependency was triggering repeatedly:
+  // 1. loadMetrics() sets loading=true, then loading=false
+  // 2. useEffect[loading] triggers on loading change
+  // 3. This creates a cycle of requests
+  // Solution: Remove this effect entirely - initial load is handled by useEffect[selectedMetric]
 
   // Log metrics state changes to track if setMetrics actually updates the state
   useEffect(() => {
