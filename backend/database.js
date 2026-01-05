@@ -356,6 +356,5 @@ export function initDatabase() {
         });
       });
     });
-    });
   });
 }
