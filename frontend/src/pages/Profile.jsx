@@ -107,11 +107,20 @@ export default function Profile() {
         const telegramUsername = tgUser?.username || profileData.username || "";
         
         // Use saved name from database (first_name + last_name) or build from profileData
-        // Priority: saved name in DB > profileData.name > Telegram name
+        // Priority: profileData.name (from backend) > first_name + last_name > Telegram name
         const savedFirstName = profileData.first_name || "";
         const savedLastName = profileData.last_name || "";
         const savedNameFromDB = `${savedFirstName} ${savedLastName}`.trim();
+        // Use profileData.name first (it's already built correctly on backend), fallback to savedNameFromDB
         const savedName = profileData.name || savedNameFromDB || "";
+        
+        console.log("🔍 loadProfile - Building savedName:", {
+          profileDataName: profileData.name,
+          savedFirstName,
+          savedLastName,
+          savedNameFromDB,
+          savedName
+        });
         
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'Building savedName',data:{profileData,savedFirstName,savedLastName,savedNameFromDB,savedName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});

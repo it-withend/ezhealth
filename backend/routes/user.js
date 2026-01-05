@@ -24,9 +24,12 @@ router.get('/profile', authenticate, async (req, res) => {
     }
 
     // Build name from first_name and last_name (saved name)
-    const savedName = user.first_name || user.last_name 
-      ? `${user.first_name || ''} ${user.last_name || ''}`.trim() 
-      : '';
+    // Handle null/undefined values properly
+    const firstName = user.first_name || '';
+    const lastName = user.last_name || '';
+    const savedName = (firstName + ' ' + lastName).trim();
+    
+    console.log(`📊 GET /profile - userId=${userId}, first_name="${firstName}", last_name="${lastName}", savedName="${savedName}"`);
     
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:GET/profile',message:'Built savedName',data:{savedName,first_name:user.first_name,last_name:user.last_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
@@ -135,6 +138,9 @@ router.put('/profile', authenticate, async (req, res) => {
       
       // Verify what was saved
       const verifyUser = await dbGet('SELECT first_name, last_name, email, phone, blood_type, allergies, medical_conditions FROM users WHERE id = ?', [userId]);
+      
+      console.log(`📊 PUT /profile - UPDATE executed, userId=${userId}, changes=${result?.changes}`);
+      console.log(`📊 PUT /profile - Verification: first_name="${verifyUser?.first_name}", last_name="${verifyUser?.last_name}", email="${verifyUser?.email}", blood_type="${verifyUser?.blood_type}"`);
       
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'Verification after UPDATE',data:{verifyUser},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
