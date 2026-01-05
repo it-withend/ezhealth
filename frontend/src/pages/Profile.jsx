@@ -72,12 +72,12 @@ export default function Profile() {
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:useEffect[user]',message:'useEffect triggered',data:{hasUser:!!user,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
     
-    if (user) {
-      console.log("🔍 User exists, calling loadProfile");
-      loadProfile();
-    } else {
-      console.log("🔍 No user, using Telegram fallback");
-      // If no user, try to get Telegram data as fallback
+    // Always try to load profile from backend first (backend can use initData from headers)
+    // Only use Telegram fallback if loadProfile fails
+    console.log("🔍 Attempting to load profile from backend (even if user is null, backend uses initData)");
+    loadProfile().catch((error) => {
+      console.error("🔍 Failed to load profile from backend, using Telegram fallback:", error);
+      // If loadProfile fails, use Telegram data as fallback
       const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
       if (tgUser) {
         const fallbackProfile = {
@@ -93,13 +93,13 @@ export default function Profile() {
         console.log("🔍 Using Telegram fallback profile:", fallbackProfile);
         
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:useEffect[user]',message:'Using Telegram fallback',data:{fallbackProfile},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:useEffect[user]',message:'Using Telegram fallback after loadProfile failed',data:{fallbackProfile,error:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
         
         setProfile(fallbackProfile);
         setFormData(fallbackProfile);
       }
-    }
+    });
   }, [user]);
 
   const loadProfile = async () => {
@@ -109,15 +109,25 @@ export default function Profile() {
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'loadProfile ENTRY',data:{hasUser:!!user,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     
-    if (!user) {
-      console.log("loadProfile: No user, skipping");
-      return;
+    // Don't skip if user is null - backend can use initData from headers
+    // Only skip if we're sure there's no way to authenticate
+    const hasInitData = !!window.Telegram?.WebApp?.initData;
+    console.log("🔍 loadProfile - hasUser:", !!user, "hasInitData:", hasInitData);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'Checking auth',data:{hasUser:!!user,hasInitData,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    if (!user && !hasInitData) {
+      console.log("loadProfile: No user and no initData, skipping");
+      throw new Error("No user and no initData available");
     }
+    
     try {
       console.log("Loading profile from backend...");
       
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'Before API call',data:{userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'Before API call',data:{userId:user?.id,hasInitData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       
       const response = await api.get("/user/profile");

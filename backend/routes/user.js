@@ -78,7 +78,9 @@ router.put('/profile', authenticate, async (req, res) => {
     // Parse name into first_name and last_name
     const nameParts = (name || '').trim().split(' ');
     const first_name = nameParts[0] || null;
-    const last_name = nameParts.slice(1).join(' ') || null;
+    const last_name = nameParts.slice(1).join(' ').trim() || null;
+    
+    console.log(`📊 PUT /profile - Parsing name: "${name}" -> first_name="${first_name}", last_name="${last_name}"`);
 
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'Parsed name parts',data:{name,nameParts,first_name,last_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
