@@ -875,16 +875,17 @@ export default function HealthMetrics() {
           <button 
             onClick={() => setShowSyncApps(!showSyncApps)}
             style={{ 
-              padding: '8px 16px', 
+              padding: '6px 12px', 
               borderRadius: '8px', 
               border: 'none', 
               background: '#2D9B8C', 
               color: 'white', 
               cursor: 'pointer',
-              fontSize: '14px'
+              fontSize: '13px',
+              fontWeight: '500'
             }}
           >
-            {showSyncApps ? (t("common.hide") || "Hide") : (t("common.show") || "Show")}
+            {showSyncApps ? t("common.hide") : t("common.show")}
           </button>
         </div>
         {showSyncApps && <HealthAppSync />}

@@ -220,7 +220,9 @@ export const translations = {
       no: "Нет",
       loading: "Загрузка...",
       error: "Ошибка",
-      success: "Успешно"
+      success: "Успешно",
+      show: "Показать",
+      hide: "Скрыть"
     },
     // Navigation
     nav: {
@@ -422,7 +424,9 @@ export const translations = {
       no: "Yo'q",
       loading: "Yuklanmoqda...",
       error: "Xatolik",
-      success: "Muvaffaqiyatli"
+      success: "Muvaffaqiyatli",
+      show: "Ko'rsatish",
+      hide: "Yashirish"
     },
     // Navigation
     nav: {
