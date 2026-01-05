@@ -111,10 +111,9 @@ export default function HealthMetrics() {
     }).catch(() => {});
     // #endregion
 
-    if (user) {
-      loadMetrics();
-      loadChartData();
-    }
+    // Backend uses middleware to get user_id from initData, so we don't need user check
+    loadMetrics();
+    loadChartData();
   }, [user, selectedMetric]);
 
   // Force reload metrics after a short delay when component is visible
@@ -458,10 +457,51 @@ export default function HealthMetrics() {
 
   const loadChartData = async () => {
     // Backend uses middleware to get user_id from initData, so we don't need user check
+    if (!selectedMetric) return; // Don't load if no metric selected
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:loadChartData',
+        message: 'loadChartData ENTRY',
+        data: { 
+          selectedMetric: selectedMetric,
+          hasUser: !!user
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H5'
+      })
+    }).catch(() => {});
+    // #endregion
+    
     try {
       const response = await api.get("/health/metrics/stats", {
         params: { type: selectedMetric, days: 30 }
       });
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadChartData',
+          message: 'loadChartData API RESPONSE',
+          data: { 
+            selectedMetric: selectedMetric,
+            dataCount: response.data?.data?.length || 0,
+            hasData: !!(response.data?.data && response.data.data.length > 0)
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H5'
+        })
+      }).catch(() => {});
+      // #endregion
       
       const data = response.data.data || [];
       
@@ -511,9 +551,48 @@ export default function HealthMetrics() {
       } else {
         setChartData(data);
       }
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadChartData',
+          message: 'loadChartData SUCCESS',
+          data: { 
+            selectedMetric: selectedMetric,
+            chartDataLength: Array.isArray(data) ? data.length : (selectedMetric === "pressure" ? "combined" : 0)
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H5'
+        })
+      }).catch(() => {});
+      // #endregion
     } catch (error) {
       console.error("Error loading chart data:", error);
       setChartData([]);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadChartData',
+          message: 'loadChartData ERROR',
+          data: { 
+            error: error.message,
+            errorStatus: error.response?.status,
+            selectedMetric: selectedMetric
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H5'
+        })
+      }).catch(() => {});
+      // #endregion
     }
   };
 
