@@ -208,39 +208,62 @@ export function initDatabase() {
                           return;
                         }
 
-                        // Create indexes
-                        database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
+                        // Health app sync table
+                        database.run(`
+                          CREATE TABLE IF NOT EXISTS health_app_sync (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id INTEGER NOT NULL,
+                            app_name TEXT NOT NULL,
+                            access_token TEXT,
+                            refresh_token TEXT,
+                            sync_enabled INTEGER DEFAULT 1,
+                            last_sync DATETIME,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            UNIQUE(user_id, app_name)
+                          )
+                        `, (err) => {
                           if (err) {
-                            console.error('Error creating index:', err);
+                            console.error('Error creating health_app_sync table:', err);
                             reject(err);
                             return;
                           }
-                          database.run(`CREATE INDEX IF NOT EXISTS idx_analyses_user_date ON medical_analyses(user_id, date)`, (err) => {
+
+                          // Create indexes
+                          database.run(`CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, recorded_at)`, (err) => {
                             if (err) {
                               console.error('Error creating index:', err);
                               reject(err);
                               return;
                             }
-                            database.run(`CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id, is_active)`, (err) => {
+                            database.run(`CREATE INDEX IF NOT EXISTS idx_analyses_user_date ON medical_analyses(user_id, date)`, (err) => {
                               if (err) {
                                 console.error('Error creating index:', err);
                                 reject(err);
                                 return;
                               }
-                              database.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_date ON ai_chat_history(user_id, created_at)`, (err) => {
+                              database.run(`CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id, is_active)`, (err) => {
                                 if (err) {
                                   console.error('Error creating index:', err);
                                   reject(err);
                                   return;
                                 }
-                                database.run(`CREATE INDEX IF NOT EXISTS idx_health_app_sync_user ON health_app_sync(user_id, sync_enabled)`, (err) => {
+                                database.run(`CREATE INDEX IF NOT EXISTS idx_ai_chat_user_date ON ai_chat_history(user_id, created_at)`, (err) => {
                                   if (err) {
                                     console.error('Error creating index:', err);
                                     reject(err);
                                     return;
                                   }
-                                  console.log('Database initialized');
-                                  resolve();
+                                  database.run(`CREATE INDEX IF NOT EXISTS idx_health_app_sync_user ON health_app_sync(user_id, sync_enabled)`, (err) => {
+                                    if (err) {
+                                      console.error('Error creating index:', err);
+                                      reject(err);
+                                      return;
+                                    }
+                                    console.log('Database initialized');
+                                    resolve();
+                                  });
                                 });
                               });
                             });
