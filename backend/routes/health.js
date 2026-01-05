@@ -41,9 +41,10 @@ router.get("/metrics", authenticate, async (req, res) => {
 
     console.log(`📊 GET /health/metrics - userId=${userId} (type: ${userIdType}), type=${type}, limit=${limit}, days=${days}`);
 
+    // Use CAST to ensure type matching
     let sql = `
       SELECT * FROM health_metrics 
-      WHERE user_id = ?
+      WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER)
     `;
     const params = [userId];
 
@@ -61,10 +62,19 @@ router.get("/metrics", authenticate, async (req, res) => {
     params.push(parseInt(limit));
 
     console.log(`📊 Executing SQL: ${sql} with params:`, params);
+    console.log(`📊 Param types: userId=${typeof params[0]}, limit=${typeof params[params.length - 1]}`);
 
     const metrics = await dbAll(sql, params);
+    
+    // Debug: Check what user_ids exist in the table
+    const allUserIds = await dbAll('SELECT DISTINCT user_id, typeof(user_id) as user_id_type, COUNT(*) as count FROM health_metrics GROUP BY user_id LIMIT 10');
+    console.log(`📊 All user_ids in health_metrics table:`, allUserIds);
+    
+    // Debug: Try query without WHERE to see all metrics
+    const allMetrics = await dbAll('SELECT id, user_id, typeof(user_id) as user_id_type, type, value FROM health_metrics ORDER BY id DESC LIMIT 10');
+    console.log(`📊 Last 10 metrics in table (all users):`, allMetrics);
 
-    console.log(`📊 Returning ${metrics.length} metrics for user ${userId}`);
+    console.log(`📊 Returning ${metrics.length} metrics for user ${userId} (type: ${typeof userId})`);
     if (metrics.length > 0) {
       console.log(`📊 Sample metrics:`, metrics.slice(0, 3).map(m => ({ 
         id: m.id, 
@@ -114,23 +124,60 @@ router.post("/metrics", authenticate, async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
+    console.log(`📊 INSERT params: userId=${userId} (type: ${typeof userId}), type=${type}, value=${value}, unit=${unit || null}`);
+    
+    // Ensure userId is stored as INTEGER
+    const userIdInt = parseInt(userId, 10);
+    console.log(`📊 INSERT: userId=${userId} -> userIdInt=${userIdInt} (type: ${typeof userIdInt})`);
+    
     const result = await dbRun(
       'INSERT INTO health_metrics (user_id, type, value, unit, notes, source) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, type, value, unit || null, notes || null, 'manual']
+      [userIdInt, type, value, unit || null, notes || null, 'manual']
     );
     
     console.log(`✅ Health metric added: ID=${result.lastID}, userId=${userId}, type=${type}, value=${value}`);
     
     // Verify the metric was saved correctly
     const savedMetric = await dbGet(
-      'SELECT * FROM health_metrics WHERE id = ? AND user_id = ?',
-      [result.lastID, userId]
+      'SELECT * FROM health_metrics WHERE id = ? AND CAST(user_id AS INTEGER) = CAST(? AS INTEGER)',
+      [result.lastID, userIdInt]
     );
     
     if (!savedMetric) {
       console.error(`❌ Failed to verify saved metric: ID=${result.lastID}, userId=${userId}`);
+      // Try to find it with different user_id types
+      const savedAsString = await dbGet(
+        'SELECT * FROM health_metrics WHERE id = ? AND user_id = ?',
+        [result.lastID, String(userId)]
+      );
+      const savedAsNumber = await dbGet(
+        'SELECT * FROM health_metrics WHERE id = ? AND user_id = ?',
+        [result.lastID, Number(userId)]
+      );
+      console.error(`❌ Tried string userId:`, savedAsString ? 'FOUND' : 'NOT FOUND');
+      console.error(`❌ Tried number userId:`, savedAsNumber ? 'FOUND' : 'NOT FOUND');
+      
+      // Check what user_ids exist in the table
+      const allMetrics = await dbAll('SELECT DISTINCT user_id, typeof(user_id) as user_id_type FROM health_metrics LIMIT 10');
+      console.error(`❌ All user_ids in table:`, allMetrics);
     } else {
-      console.log(`✅ Verified saved metric:`, { id: savedMetric.id, user_id: savedMetric.user_id, type: savedMetric.type, value: savedMetric.value });
+      console.log(`✅ Verified saved metric:`, { 
+        id: savedMetric.id, 
+        user_id: savedMetric.user_id, 
+        user_id_type: typeof savedMetric.user_id,
+        type: savedMetric.type, 
+        value: savedMetric.value 
+      });
+    }
+    
+    // Also check if we can retrieve it with the same query used in GET
+    const testQuery = await dbAll(
+      'SELECT * FROM health_metrics WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) ORDER BY recorded_at DESC LIMIT 10',
+      [userIdInt]
+    );
+    console.log(`📊 Test query after insert: Found ${testQuery.length} metrics for userId=${userId}`);
+    if (testQuery.length > 0) {
+      console.log(`📊 Test query sample:`, testQuery[0]);
     }
 
     // Check for critical values and trigger alerts
@@ -188,9 +235,10 @@ router.get("/metrics/:id", authenticate, async (req, res) => {
     const metricId = req.params.id;
     const userId = req.userId;
 
+    const userIdInt = parseInt(userId, 10);
     const metric = await dbGet(
-      'SELECT * FROM health_metrics WHERE id = ? AND user_id = ?',
-      [metricId, userId]
+      'SELECT * FROM health_metrics WHERE id = ? AND CAST(user_id AS INTEGER) = CAST(? AS INTEGER)',
+      [metricId, userIdInt]
     );
 
     if (!metric) {
@@ -214,9 +262,10 @@ router.put("/metrics/:id", authenticate, async (req, res) => {
     const userId = req.userId;
     const { type, value, unit, notes } = req.body;
 
+    const userIdInt = parseInt(userId, 10);
     await dbRun(
-      'UPDATE health_metrics SET type = ?, value = ?, unit = ?, notes = ? WHERE id = ? AND user_id = ?',
-      [type, value, unit, notes, metricId, userId]
+      'UPDATE health_metrics SET type = ?, value = ?, unit = ?, notes = ? WHERE id = ? AND CAST(user_id AS INTEGER) = CAST(? AS INTEGER)',
+      [type, value, unit, notes, metricId, userIdInt]
     );
 
     res.json({ success: true });
@@ -232,9 +281,10 @@ router.delete("/metrics/:id", authenticate, async (req, res) => {
     const metricId = req.params.id;
     const userId = req.userId;
 
+    const userIdInt = parseInt(userId, 10);
     await dbRun(
-      'DELETE FROM health_metrics WHERE id = ? AND user_id = ?',
-      [metricId, userId]
+      'DELETE FROM health_metrics WHERE id = ? AND CAST(user_id AS INTEGER) = CAST(? AS INTEGER)',
+      [metricId, userIdInt]
     );
 
     res.json({ success: true });
@@ -256,13 +306,23 @@ router.get("/metrics/stats", authenticate, async (req, res) => {
 
     console.log(`📈 Getting stats: userId=${userId}, type=${type}, days=${days}`);
 
+    const userIdInt = parseInt(userId, 10);
+    console.log(`📈 Getting stats: userId=${userId} -> userIdInt=${userIdInt} (type: ${typeof userIdInt}), type=${type}, days=${days}`);
+
+    // Debug: Check what metrics exist for this user
+    const allUserMetrics = await dbAll(
+      'SELECT id, user_id, typeof(user_id) as user_id_type, type, value FROM health_metrics WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) LIMIT 10',
+      [userIdInt]
+    );
+    console.log(`📈 All metrics for userId=${userIdInt}:`, allUserMetrics);
+
     const metrics = await dbAll(
       `SELECT value, recorded_at, unit 
        FROM health_metrics 
-       WHERE user_id = ? AND type = ? 
+       WHERE CAST(user_id AS INTEGER) = CAST(? AS INTEGER) AND type = ? 
        AND recorded_at >= datetime("now", "-${days} days")
        ORDER BY recorded_at ASC`,
-      [userId, type]
+      [userIdInt, type]
     );
 
     console.log(`📈 Found ${metrics.length} metrics for type ${type}`);
