@@ -116,15 +116,29 @@ export default function HealthAppSync() {
         
         const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}&access_type=offline&prompt=consent`;
         
-        console.log(`🔐 Redirecting to Google OAuth:`);
+        console.log(`🔐 Opening Google OAuth in external browser:`);
         console.log(`🔐 Client ID: ${clientId}`);
         console.log(`🔐 Redirect URI: ${redirectUri}`);
         console.log(`🔐 State (userId): ${state}`);
         console.log(`🔐 Full OAuth URL: ${oauthUrl}`);
         console.log(`🔐 Make sure this redirect URI is added to Google Cloud Console: ${redirectUri}`);
         
-        // Redirect to Google OAuth
-        window.location.href = oauthUrl;
+        // Open OAuth URL in external browser (required by Google for security)
+        // Google blocks OAuth requests from embedded WebViews (disallowed_useragent error)
+        if (window.Telegram?.WebApp?.openLink) {
+          // Use Telegram WebApp API to open in external browser
+          window.Telegram.WebApp.openLink(oauthUrl);
+        } else if (window.Telegram?.WebApp?.openTelegramLink) {
+          // Fallback for older Telegram WebApp versions
+          window.Telegram.WebApp.openTelegramLink(oauthUrl);
+        } else {
+          // Fallback: try to open in new window/tab
+          const newWindow = window.open(oauthUrl, '_blank', 'noopener,noreferrer');
+          if (!newWindow) {
+            // If popup blocked, show instructions
+            alert('Please allow popups and try again, or copy this URL and open it in your browser:\n\n' + oauthUrl);
+          }
+        }
       } else if (appId === "mi_fit" || appId === "apple_health") {
         // For other apps, use test token flow for now
         const useTestToken = window.confirm(`To connect ${app?.name}:\n\nFor testing: Use test token? (Full OAuth integration coming soon)`);
