@@ -241,6 +241,27 @@ router.get("/history", authenticate, async (req, res) => {
   }
 });
 
+// DELETE /api/ai/history - Clear chat history
+router.delete("/history", authenticate, async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    console.log(`🗑️ Clearing chat history for user ${userId}`);
+
+    await dbRun(
+      `DELETE FROM ai_chat_history WHERE user_id = ?`,
+      [userId]
+    );
+
+    console.log(`✅ Chat history cleared for user ${userId}`);
+
+    res.json({ success: true, message: "Chat history cleared" });
+  } catch (error) {
+    console.error("Error clearing chat history:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/ai/analyze - Analyze text message
 router.post("/analyze", authenticate, async (req, res) => {
   try {
@@ -532,6 +553,31 @@ CRITICAL: You MUST respond ONLY in ${detectedLang} language. Do NOT mix language
       );
       
       analysis = result.response;
+      
+      // Save user message and AI response to database
+      const userId = req.userId;
+      const userMessageText = isImage 
+        ? `Uploaded image: ${req.file.originalname}`
+        : `Uploaded document: ${req.file.originalname}`;
+      
+      try {
+        // Save user message about file upload
+        await dbRun(
+          `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
+          [userId, 'user', userMessageText]
+        );
+        console.log(`💾 Saved user file upload message to history for user ${userId}`);
+        
+        // Save AI response
+        await dbRun(
+          `INSERT INTO ai_chat_history (user_id, role, content) VALUES (?, ?, ?)`,
+          [userId, 'assistant', analysis]
+        );
+        console.log(`💾 Saved AI file analysis response to history for user ${userId}`);
+      } catch (dbError) {
+        console.error("Error saving file analysis to history:", dbError);
+        // Don't fail the request if history save fails
+      }
     } catch (poeError) {
       console.error("Poe API Error in file analysis:", poeError);
       

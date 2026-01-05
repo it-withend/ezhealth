@@ -26,6 +26,53 @@ export default function Consultation() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load chat history from backend on mount
+  useEffect(() => {
+    loadChatHistory();
+  }, []);
+
+  const loadChatHistory = async () => {
+    try {
+      console.log("Loading chat history...");
+      const response = await api.get("/ai/history");
+      console.log("Chat history response:", response.data);
+      
+      if (response.data.history && response.data.history.length > 0) {
+        const loadedMessages = response.data.history.map((msg, index) => {
+          const msgDate = msg.timestamp || msg.created_at || Date.now();
+          const dateObj = typeof msgDate === 'string' ? new Date(msgDate) : new Date(msgDate);
+          return {
+            id: msg.id || index + 1,
+            text: msg.content,
+            sender: msg.role === "assistant" ? "ai" : "user",
+            timestamp: dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          };
+        });
+        console.log(`Loaded ${loadedMessages.length} messages from history`);
+        setMessages(loadedMessages);
+      } else {
+        // No history, show initial message
+        console.log("No chat history found, showing initial message");
+        setMessages([{
+          id: 1,
+          text: t("aiChat.initialMessage"),
+          sender: "ai",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        }]);
+      }
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      console.error("Error details:", error.response?.data);
+      // On error, show initial message
+      setMessages([{
+        id: 1,
+        text: t("aiChat.initialMessage"),
+        sender: "ai",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }]);
+    }
+  };
+
   // Update initial message when language changes (only if no history)
   useEffect(() => {
     const currentInitialMessage = t("aiChat.initialMessage");
@@ -147,8 +194,18 @@ export default function Consultation() {
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     if (window.confirm(t("aiChat.clearChatConfirm") || "Вы уверены, что хотите очистить чат?")) {
+      try {
+        // Clear history from backend
+        await api.delete("/ai/history");
+        console.log("Chat history cleared from backend");
+      } catch (error) {
+        console.error("Error clearing chat history:", error);
+        // Continue with local clear even if backend fails
+      }
+      
+      // Clear local messages
       setMessages([{
         id: 1,
         text: t("aiChat.initialMessage"),
