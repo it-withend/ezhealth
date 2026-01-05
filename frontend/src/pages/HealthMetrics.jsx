@@ -49,6 +49,33 @@ export default function HealthMetrics() {
   const { user } = useContext(AuthContext);
   const { t } = useLanguage();
   const [selectedMetric, setSelectedMetric] = useState("pulse");
+  
+  // Handle OAuth callback messages
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get('connected');
+    const success = params.get('success');
+    const error = params.get('error');
+    const errorMessage = params.get('message');
+    
+    if (connected && success === 'true') {
+      alert(t("health.appConnected") || `Google Fit connected successfully! You can now sync your health data.`);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (error) {
+      const messages = {
+        'oauth_denied': 'Authorization was denied. Please try again.',
+        'no_code': 'Authorization code not received. Please try again.',
+        'no_user': 'User not found. Please log in again.',
+        'token_failed': 'Failed to exchange authorization code. Please try again.',
+        'config_error': 'Server configuration error. Please contact support.',
+        'server_error': 'Server error occurred. Please try again later.'
+      };
+      alert(t("common.error") || "Error" + ": " + (errorMessage || messages[error] || 'Unknown error occurred'));
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [t]);
   const [chartData, setChartData] = useState([]);
   const [metrics, setMetrics] = useState(() => {
     // This will be updated when language changes

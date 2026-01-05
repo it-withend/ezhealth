@@ -106,64 +106,40 @@ export default function HealthAppSync() {
       const appId = selectedApp.id;
       const app = apps.find(a => a.id === appId);
       
-      // Show OAuth instructions
-      let oauthUrl = "";
-      let instructions = "";
-      
       if (appId === "google_fit") {
-        instructions = `To connect Google Fit:
-1. Click "Authorize" below to open Google OAuth
-2. Sign in with your Google account
-3. Grant permissions to access Google Fit data
-4. You will be redirected back to the app`;
+        // Build OAuth URL for Google Fit
+        const clientId = process.env.REACT_APP_GOOGLE_FIT_CLIENT_ID || '57242427608-a0c5s1923op8ndn56a018mphciqp5ksu.apps.googleusercontent.com';
+        const backendUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'https://ezhealth-l6zx.onrender.com';
+        const redirectUri = `${backendUrl}/api/auth/google-fit/callback`;
+        const scope = 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read https://www.googleapis.com/auth/fitness.sleep.read';
+        const state = user?.id || ''; // Pass userId in state
         
-        // In production, this would be the actual OAuth URL
-        oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/google-fit/callback')}&response_type=code&scope=https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read`;
-      } else if (appId === "mi_fit") {
-        instructions = `To connect Mi Fit (Xiaomi Health):
-1. Click "Authorize" below to open Xiaomi OAuth
-2. Sign in with your Xiaomi account
-3. Grant permissions to access health data
-4. You will be redirected back to the app
-
-API Reference: https://dev.mi.com/docs/passport/en/open-api/`;
+        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}&access_type=offline&prompt=consent`;
         
-        // In production, this would be the actual OAuth URL
-        oauthUrl = `https://open.account.xiaomi.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/mi-fit/callback')}&response_type=code&scope=1+3`;
-      } else if (appId === "apple_health") {
-        instructions = `To connect Apple Health:
-1. Open Settings > Privacy & Security > Health
-2. Enable HealthKit sharing
-3. Grant permissions to this app
-4. The app will automatically sync data
-
-Note: Full integration requires iOS app with HealthKit framework`;
-        oauthUrl = null; // Apple Health uses HealthKit, not OAuth
-      } else {
-        instructions = `To connect ${app?.name}:
-Please refer to the app's official documentation for OAuth setup instructions.`;
-        oauthUrl = null;
-      }
-
-      // For now, use test token (in production, redirect to OAuth)
-      const useTestToken = window.confirm(instructions + "\n\nFor testing: Use test token? (In production, this would redirect to OAuth)");
-      
-      if (useTestToken) {
-        const mockToken = `mock_token_${appId}_${Date.now()}`;
+        console.log(`🔐 Redirecting to Google OAuth:`, { clientId, redirectUri, state });
         
-        console.log(`Connecting ${appId} with test token...`);
-        await api.post("/health/sync/connect", {
-          appName: appId,
-          accessToken: mockToken
-        });
-        
-        alert(t("health.appConnected") || `${app?.name} connected successfully!`);
-        setShowConnectModal(false);
-        setSelectedApp(null);
-        await loadApps();
-      } else if (oauthUrl) {
-        // In production, redirect to OAuth URL
+        // Redirect to Google OAuth
         window.location.href = oauthUrl;
+      } else if (appId === "mi_fit" || appId === "apple_health") {
+        // For other apps, use test token flow for now
+        const useTestToken = window.confirm(`To connect ${app?.name}:\n\nFor testing: Use test token? (Full OAuth integration coming soon)`);
+        
+        if (useTestToken) {
+          const mockToken = `mock_token_${appId}_${Date.now()}`;
+          
+          console.log(`Connecting ${appId} with test token...`);
+          await api.post("/health/sync/connect", {
+            appName: appId,
+            accessToken: mockToken
+          });
+          
+          alert(t("health.appConnected") || `${app?.name} connected successfully!`);
+          setShowConnectModal(false);
+          setSelectedApp(null);
+          await loadApps();
+        }
+      } else {
+        alert(`OAuth integration for ${app?.name} is not yet available.`);
       }
     } catch (error) {
       console.error("Error connecting app:", error);

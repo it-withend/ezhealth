@@ -236,12 +236,48 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// Refresh Google Fit access token using refresh token
+async function refreshGoogleFitToken(refreshToken) {
+  try {
+    const clientId = process.env.GOOGLE_FIT_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_FIT_CLIENT_SECRET;
+    
+    if (!clientId || !clientSecret) {
+      throw new Error('Google Fit credentials not configured');
+    }
+    
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'refresh_token'
+      })
+    });
+    
+    const tokens = await response.json();
+    
+    if (tokens.error) {
+      throw new Error(`Token refresh failed: ${tokens.error}`);
+    }
+    
+    return tokens;
+  } catch (error) {
+    console.error('Error refreshing Google Fit token:', error);
+    throw error;
+  }
+}
+
 // Fetch data from Google Fit API
 async function fetchGoogleFitData(accessToken, days = 7) {
-  const endTime = Date.now() * 1000000; // nanoseconds
-  const startTime = endTime - (days * 24 * 60 * 60 * 1000000000); // nanoseconds
+  const endTimeMillis = Date.now();
+  const startTimeMillis = endTimeMillis - (days * 24 * 60 * 60 * 1000);
   
   const metrics = [];
+  
+  console.log(`📊 Fetching Google Fit data from ${new Date(startTimeMillis).toISOString()} to ${new Date(endTimeMillis).toISOString()}`);
   
   try {
     // Fetch heart rate data
@@ -258,25 +294,35 @@ async function fetchGoogleFitData(accessToken, days = 7) {
             dataTypeName: 'com.google.heart_rate.bpm'
           }],
           bucketByTime: { durationMillis: 86400000 }, // 1 day
-          startTimeMillis: Math.floor(startTime / 1000000),
-          endTimeMillis: Math.floor(endTime / 1000000)
+          startTimeMillis: startTimeMillis,
+          endTimeMillis: endTimeMillis
         })
       }
     );
     
-    if (heartRateResponse.ok) {
+    if (!heartRateResponse.ok) {
+      const errorData = await heartRateResponse.json().catch(() => ({}));
+      console.error(`📊 Heart rate API error: ${heartRateResponse.status}`, errorData);
+      if (heartRateResponse.status === 401) {
+        throw new Error('401 Unauthorized - token expired');
+      }
+    } else {
       const data = await heartRateResponse.json();
+      console.log(`📊 Heart rate response:`, { bucketCount: data.bucket?.length || 0 });
       if (data.bucket) {
         data.bucket.forEach(bucket => {
           if (bucket.dataset && bucket.dataset[0] && bucket.dataset[0].point) {
             bucket.dataset[0].point.forEach(point => {
               if (point.value && point.value[0]) {
-                metrics.push({
-                  type: 'com.google.heart_rate.bpm',
-                  value: point.value[0].fpVal || point.value[0].intVal,
-                  unit: 'bpm',
-                  timestamp: point.startTimeNanos
-                });
+                const value = point.value[0].fpVal || point.value[0].intVal;
+                if (value) {
+                  metrics.push({
+                    type: 'com.google.heart_rate.bpm',
+                    value: value,
+                    unit: 'bpm',
+                    timestamp: point.startTimeNanos || point.endTimeNanos
+                  });
+                }
               }
             });
           }
@@ -286,7 +332,7 @@ async function fetchGoogleFitData(accessToken, days = 7) {
     
     // Fetch sleep data
     const sleepResponse = await fetch(
-      `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${Math.floor(startTime / 1000000)}&endTime=${Math.floor(endTime / 1000000)}`,
+      `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${startTimeMillis}&endTime=${endTimeMillis}`,
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`
@@ -294,18 +340,24 @@ async function fetchGoogleFitData(accessToken, days = 7) {
       }
     );
     
-    if (sleepResponse.ok) {
+    if (!sleepResponse.ok) {
+      const errorData = await sleepResponse.json().catch(() => ({}));
+      console.error(`📊 Sleep API error: ${sleepResponse.status}`, errorData);
+    } else {
       const sleepData = await sleepResponse.json();
+      console.log(`📊 Sleep response:`, { sessionCount: sleepData.session?.length || 0 });
       if (sleepData.session) {
         sleepData.session.forEach(session => {
           if (session.activityType === 72) { // Sleep activity type
             const durationHours = (session.endTimeMillis - session.startTimeMillis) / (1000 * 60 * 60);
-            metrics.push({
-              type: 'com.google.sleep.segment',
-              value: durationHours,
-              unit: 'hours',
-              timestamp: session.startTimeMillis * 1000000
-            });
+            if (durationHours > 0) {
+              metrics.push({
+                type: 'com.google.sleep.segment',
+                value: durationHours,
+                unit: 'hours',
+                timestamp: session.startTimeMillis * 1000000
+              });
+            }
           }
         });
       }
@@ -325,31 +377,40 @@ async function fetchGoogleFitData(accessToken, days = 7) {
             dataTypeName: 'com.google.weight'
           }],
           bucketByTime: { durationMillis: 86400000 },
-          startTimeMillis: Math.floor(startTime / 1000000),
-          endTimeMillis: Math.floor(endTime / 1000000)
+          startTimeMillis: startTimeMillis,
+          endTimeMillis: endTimeMillis
         })
       }
     );
     
-    if (weightResponse.ok) {
+    if (!weightResponse.ok) {
+      const errorData = await weightResponse.json().catch(() => ({}));
+      console.error(`📊 Weight API error: ${weightResponse.status}`, errorData);
+    } else {
       const weightData = await weightResponse.json();
+      console.log(`📊 Weight response:`, { bucketCount: weightData.bucket?.length || 0 });
       if (weightData.bucket) {
         weightData.bucket.forEach(bucket => {
           if (bucket.dataset && bucket.dataset[0] && bucket.dataset[0].point) {
             bucket.dataset[0].point.forEach(point => {
               if (point.value && point.value[0]) {
-                metrics.push({
-                  type: 'com.google.weight',
-                  value: point.value[0].fpVal || point.value[0].intVal,
-                  unit: 'kg',
-                  timestamp: point.startTimeNanos
-                });
+                const value = point.value[0].fpVal || point.value[0].intVal;
+                if (value) {
+                  metrics.push({
+                    type: 'com.google.weight',
+                    value: value,
+                    unit: 'kg',
+                    timestamp: point.startTimeNanos || point.endTimeNanos
+                  });
+                }
               }
             });
           }
         });
       }
     }
+    
+    console.log(`📊 Total metrics fetched: ${metrics.length}`);
     
   } catch (error) {
     console.error('Error fetching Google Fit data:', error);
@@ -469,21 +530,53 @@ router.post('/sync/:appName', async (req, res) => {
     
     // Fetch data from the health app API
     if (appName === 'google_fit') {
+      let accessToken = connection.access_token;
+      let tokenRefreshed = false;
+      
       try {
         console.log(`🔄 Fetching data from Google Fit API...`);
-        metrics = await fetchGoogleFitData(connection.access_token, parseInt(days));
+        metrics = await fetchGoogleFitData(accessToken, parseInt(days));
         console.log(`📊 Fetched ${metrics.length} metrics from Google Fit`);
       } catch (error) {
         console.error('🔄 Error fetching from Google Fit:', error);
         console.error('🔄 Error details:', error.message, error.stack);
+        
         // If token expired, try to refresh
         if (error.message && (error.message.includes('401') || error.message.includes('unauthorized'))) {
-          return res.status(401).json({ 
-            error: 'Access token expired. Please reconnect the app.',
-            needsReconnect: true
-          });
+          if (connection.refresh_token) {
+            console.log(`🔄 Access token expired, attempting to refresh...`);
+            try {
+              const newTokens = await refreshGoogleFitToken(connection.refresh_token);
+              accessToken = newTokens.access_token;
+              
+              // Update tokens in database
+              await dbRun(
+                `UPDATE health_app_sync SET access_token = ?, refresh_token = ? WHERE user_id = ? AND app_name = ?`,
+                [newTokens.access_token, newTokens.refresh_token || connection.refresh_token, userId, appName]
+              );
+              
+              console.log(`✅ Token refreshed successfully`);
+              tokenRefreshed = true;
+              
+              // Retry fetching data with new token
+              metrics = await fetchGoogleFitData(accessToken, parseInt(days));
+              console.log(`📊 Fetched ${metrics.length} metrics from Google Fit (after refresh)`);
+            } catch (refreshError) {
+              console.error('🔄 Token refresh failed:', refreshError);
+              return res.status(401).json({ 
+                error: 'Access token expired and refresh failed. Please reconnect the app.',
+                needsReconnect: true
+              });
+            }
+          } else {
+            return res.status(401).json({ 
+              error: 'Access token expired. Please reconnect the app.',
+              needsReconnect: true
+            });
+          }
+        } else {
+          throw error;
         }
-        throw error;
       }
     } else {
       // For other apps, generate sample data if mock token, otherwise return message

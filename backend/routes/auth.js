@@ -163,5 +163,104 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// Google Fit OAuth callback - no authentication required (external callback from Google)
+router.get('/google-fit/callback', async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+    
+    console.log(`🔐 Google Fit OAuth callback - code: ${code ? 'present' : 'missing'}, state: ${state}, error: ${error}`);
+    
+    // Get userId from state or initData header
+    const initData = req.headers['x-telegram-init-data'];
+    let userId = null;
+    
+    if (state) {
+      // State contains userId if passed from frontend
+      userId = parseInt(state);
+      console.log(`🔐 UserId from state: ${userId}`);
+    } else if (initData) {
+      // Extract userId from Telegram initData
+      try {
+        const params = new URLSearchParams(initData);
+        const userParam = params.get('user');
+        if (userParam) {
+          const user = JSON.parse(decodeURIComponent(userParam));
+          const telegramId = user.id;
+          const userRecord = await dbGet('SELECT id FROM users WHERE telegram_id = ?', [telegramId]);
+          if (userRecord) {
+            userId = userRecord.id;
+            console.log(`🔐 UserId from initData: ${userId} (telegramId: ${telegramId})`);
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing initData:', err);
+      }
+    }
+    
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=oauth_denied&message=${encodeURIComponent(error)}`);
+    }
+    
+    if (!code) {
+      console.error('No authorization code received');
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=no_code`);
+    }
+    
+    if (!userId) {
+      console.error('No userId found - cannot save tokens');
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=no_user`);
+    }
+    
+    // Exchange code for access token
+    const clientId = process.env.GOOGLE_FIT_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_FIT_CLIENT_SECRET;
+    const redirectUri = `${process.env.BACKEND_URL || 'https://ezhealth-l6zx.onrender.com'}/api/auth/google-fit/callback`;
+    
+    if (!clientId || !clientSecret) {
+      console.error('Google Fit credentials not configured');
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=config_error`);
+    }
+    
+    console.log(`🔐 Exchanging code for token...`);
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      })
+    });
+    
+    const tokens = await tokenResponse.json();
+    
+    if (tokens.error) {
+      console.error('Token exchange error:', tokens);
+      return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=token_failed&message=${encodeURIComponent(tokens.error_description || tokens.error)}`);
+    }
+    
+    console.log(`🔐 Token exchange successful - access_token: ${tokens.access_token ? 'present' : 'missing'}, refresh_token: ${tokens.refresh_token ? 'present' : 'missing'}`);
+    
+    // Save tokens to database
+    await dbRun(
+      `INSERT OR REPLACE INTO health_app_sync (user_id, app_name, access_token, refresh_token, sync_enabled)
+       VALUES (?, 'google_fit', ?, ?, 1)`,
+      [userId, tokens.access_token, tokens.refresh_token || null]
+    );
+    
+    console.log(`✅ Google Fit connected for user ${userId}`);
+    
+    // Redirect back to app
+    res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?connected=google_fit&success=true`);
+  } catch (error) {
+    console.error('Google Fit OAuth callback error:', error);
+    console.error('Error stack:', error.stack);
+    res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=server_error&message=${encodeURIComponent(error.message)}`);
+  }
+});
+
 export default router;
 
