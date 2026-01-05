@@ -9,7 +9,15 @@ router.get('/profile', authenticate, async (req, res) => {
   try {
     const userId = req.userId;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:GET/profile',message:'GET /profile - start',data:{userId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
     const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:GET/profile',message:'User data from DB',data:{user:user?{id:user.id,first_name:user.first_name,last_name:user.last_name,email:user.email,phone:user.phone,blood_type:user.blood_type,allergies:user.allergies,medical_conditions:user.medical_conditions}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -20,7 +28,11 @@ router.get('/profile', authenticate, async (req, res) => {
       ? `${user.first_name || ''} ${user.last_name || ''}`.trim() 
       : '';
     
-    res.json({
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:GET/profile',message:'Built savedName',data:{savedName,first_name:user.first_name,last_name:user.last_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    const profileResponse = {
       success: true,
       profile: {
         id: user.id,
@@ -37,7 +49,13 @@ router.get('/profile', authenticate, async (req, res) => {
         username: user.username || '',
         photo_url: user.photo_url
       }
-    });
+    };
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:GET/profile',message:'Profile response',data:{profile:profileResponse.profile},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    res.json(profileResponse);
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -50,10 +68,18 @@ router.put('/profile', authenticate, async (req, res) => {
     const userId = req.userId;
     const { name, email, phone, dateOfBirth, bloodType, allergies, medicalConditions } = req.body;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'PUT /profile - incoming data',data:{userId,body:req.body},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     // Parse name into first_name and last_name
     const nameParts = (name || '').trim().split(' ');
     const first_name = nameParts[0] || null;
     const last_name = nameParts.slice(1).join(' ') || null;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'Parsed name parts',data:{name,nameParts,first_name,last_name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
 
     // Update only provided fields (don't overwrite with null if field is empty string)
     const updates = [];
@@ -93,11 +119,26 @@ router.put('/profile', authenticate, async (req, res) => {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'SQL UPDATE prepared',data:{sql:`UPDATE users SET ${updates.join(', ')} WHERE id = ?`,values},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+
     if (updates.length > 1) { // More than just updated_at
-      await dbRun(
+      const result = await dbRun(
         `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
         values
       );
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'UPDATE executed',data:{result,changes:result?.changes},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      // Verify what was saved
+      const verifyUser = await dbGet('SELECT first_name, last_name, email, phone, blood_type, allergies, medical_conditions FROM users WHERE id = ?', [userId]);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'user.js:PUT/profile',message:'Verification after UPDATE',data:{verifyUser},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
     }
 
     console.log(`✅ Profile updated for user ${userId}`);

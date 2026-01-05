@@ -113,6 +113,10 @@ export default function Profile() {
         const savedNameFromDB = `${savedFirstName} ${savedLastName}`.trim();
         const savedName = profileData.name || savedNameFromDB || "";
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'Building savedName',data:{profileData,savedFirstName,savedLastName,savedNameFromDB,savedName},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
         const loadedProfile = {
           name: savedName || "",
           email: profileData.email || "",
@@ -125,6 +129,11 @@ export default function Profile() {
         };
         
         console.log("Loaded profile:", loadedProfile);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:loadProfile',message:'Final loadedProfile',data:{loadedProfile},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
         setProfile(loadedProfile);
         setFormData(loadedProfile);
       } else {
@@ -156,6 +165,11 @@ export default function Profile() {
   const handleSaveProfile = async () => {
     try {
       console.log("Saving profile with data:", formData);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:handleSaveProfile',message:'Before API call',data:{formData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       const response = await api.put("/user/profile", {
         name: formData.name,
         email: formData.email,
@@ -168,8 +182,16 @@ export default function Profile() {
       
       console.log("Profile save response:", response.data);
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:handleSaveProfile',message:'After API call',data:{response:response.data},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       // Update state immediately with formData (optimistic update)
       setProfile(formData);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Profile.jsx:handleSaveProfile',message:'State updated with formData',data:{formData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       
       // Close edit mode
       setIsEditing(false);
