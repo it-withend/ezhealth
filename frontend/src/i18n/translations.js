@@ -77,7 +77,18 @@ export const translations = {
       locationError: "Could not get your location. Please enable location services.",
       shareHealthData: "Share Health Metrics",
       dataShared: "Health data shared with trusted contacts",
-      errorSharingData: "Error sharing data"
+      errorSharingData: "Error sharing data",
+      email: "Email",
+      phone: "Phone",
+      username: "Username",
+      dateOfBirth: "Date of Birth",
+      namePlaceholder: "Enter your name",
+      emailPlaceholder: "Enter your email",
+      usernamePlaceholder: "Telegram username",
+      phonePlaceholder: "+1 (555) 123-4567",
+      bloodTypePlaceholder: "e.g., O+",
+      allergiesPlaceholder: "e.g., Penicillin",
+      medicalConditionsPlaceholder: "Enter medical conditions"
     },
     // Assistant
     assistant: {
@@ -282,7 +293,18 @@ export const translations = {
       locationError: "Не удалось получить вашу геолокацию. Пожалуйста, включите службы геолокации.",
       shareHealthData: "Поделиться показателями здоровья",
       dataShared: "Данные о здоровье отправлены доверенным контактам",
-      errorSharingData: "Ошибка при отправке данных"
+      errorSharingData: "Ошибка при отправке данных",
+      email: "Email",
+      phone: "Телефон",
+      username: "Имя пользователя",
+      dateOfBirth: "Дата рождения",
+      namePlaceholder: "Введите ваше имя",
+      emailPlaceholder: "Введите ваш email",
+      usernamePlaceholder: "Имя пользователя Telegram",
+      phonePlaceholder: "+7 (999) 123-45-67",
+      bloodTypePlaceholder: "например, O+",
+      allergiesPlaceholder: "например, Пенициллин",
+      medicalConditionsPlaceholder: "Введите медицинские состояния"
     },
     // Assistant
     assistant: {
@@ -486,7 +508,18 @@ export const translations = {
       locationError: "Geolokatsiyani olish mumkin emas. Iltimos, geolokatsiya xizmatlarini yoqing.",
       shareHealthData: "Salomatlik ko'rsatkichlarini baham ko'rish",
       dataShared: "Salomatlik ma'lumotlari ishonchli kontaktlarga yuborildi",
-      errorSharingData: "Ma'lumotlarni yuborishda xatolik"
+      errorSharingData: "Ma'lumotlarni yuborishda xatolik",
+      email: "Email",
+      phone: "Telefon",
+      username: "Foydalanuvchi nomi",
+      dateOfBirth: "Tug'ilgan sana",
+      namePlaceholder: "Ismingizni kiriting",
+      emailPlaceholder: "Emailingizni kiriting",
+      usernamePlaceholder: "Telegram foydalanuvchi nomi",
+      phonePlaceholder: "+998 90 123 45 67",
+      bloodTypePlaceholder: "masalan, O+",
+      allergiesPlaceholder: "masalan, Penitsillin",
+      medicalConditionsPlaceholder: "Tibbiy holatlarni kiriting"
     },
     // Assistant
     assistant: {

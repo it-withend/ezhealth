@@ -12,13 +12,14 @@ export default function Profile() {
   const { t, language, changeLanguage } = useLanguage();
   const { user } = useContext(AuthContext);
   const [profile, setProfile] = useState({
-    name: "Kathryn Murphy",
-    email: "kathryn.murphy@example.com",
-    phone: "+1 (555) 123-4567",
-    dateOfBirth: "1990-05-15",
-    bloodType: "O+",
-    allergies: "Penicillin",
-    medicalConditions: "None reported"
+    name: "",
+    email: "",
+    phone: "",
+    username: "",
+    dateOfBirth: "",
+    bloodType: "",
+    allergies: "",
+    medicalConditions: ""
   });
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(profile);
@@ -63,10 +64,27 @@ export default function Profile() {
     }
   };
 
-  // Load profile from backend on mount
+  // Load profile from backend on mount and when user changes
   useEffect(() => {
     if (user) {
       loadProfile();
+    } else {
+      // If no user, try to get Telegram data as fallback
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      if (tgUser) {
+        const fallbackProfile = {
+          name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || "",
+          email: "",
+          phone: "",
+          username: tgUser.username || "",
+          dateOfBirth: "",
+          bloodType: "",
+          allergies: "",
+          medicalConditions: ""
+        };
+        setProfile(fallbackProfile);
+        setFormData(fallbackProfile);
+      }
     }
   }, [user]);
 
@@ -76,37 +94,54 @@ export default function Profile() {
       const response = await api.get("/user/profile");
       if (response.data.profile) {
         const profileData = response.data.profile;
+        
+        // Get Telegram user data
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+        const telegramFirstName = tgUser?.first_name || profileData.first_name || "";
+        const telegramLastName = tgUser?.last_name || profileData.last_name || "";
+        const telegramUsername = tgUser?.username || profileData.username || "";
+        
+        // Build name from Telegram data or saved data
+        const telegramName = `${telegramFirstName} ${telegramLastName}`.trim();
+        const savedName = profileData.name || "";
+        
         const loadedProfile = {
-          name: profileData.name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || "User",
+          name: savedName || telegramName || "",
           email: profileData.email || "",
           phone: profileData.phone || "",
-          dateOfBirth: profileData.dateOfBirth || "",
-          bloodType: profileData.bloodType || "",
+          username: telegramUsername || profileData.username || "",
+          dateOfBirth: profileData.dateOfBirth || profileData.date_of_birth || "",
+          bloodType: profileData.bloodType || profileData.blood_type || "",
           allergies: profileData.allergies || "",
-          medicalConditions: profileData.medicalConditions || ""
+          medicalConditions: profileData.medicalConditions || profileData.medical_conditions || ""
         };
         setProfile(loadedProfile);
         setFormData(loadedProfile);
       }
     } catch (error) {
       console.error("Error loading profile:", error);
-      // Fallback to localStorage if API fails
-      const savedProfile = localStorage.getItem("userProfile");
-      if (savedProfile) {
-        try {
-          const parsed = JSON.parse(savedProfile);
-          setProfile(parsed);
-          setFormData(parsed);
-        } catch (e) {
-          console.error("Failed to load profile from localStorage");
-        }
+      // Fallback: use Telegram data
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      if (tgUser) {
+        const fallbackProfile = {
+          name: `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || "",
+          email: "",
+          phone: "",
+          username: tgUser.username || "",
+          dateOfBirth: "",
+          bloodType: "",
+          allergies: "",
+          medicalConditions: ""
+        };
+        setProfile(fallbackProfile);
+        setFormData(fallbackProfile);
       }
     }
   };
 
   const handleSaveProfile = async () => {
     try {
-      await api.put("/user/profile", {
+      const response = await api.put("/user/profile", {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -115,10 +150,30 @@ export default function Profile() {
         allergies: formData.allergies,
         medicalConditions: formData.medicalConditions
       });
-      setProfile(formData);
+      
+      // Use updated profile from response or reload
+      if (response.data.profile) {
+        const profileData = response.data.profile;
+        const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+        const telegramUsername = tgUser?.username || profileData.username || "";
+        
+        const updatedProfile = {
+          name: profileData.name || `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || "",
+          email: profileData.email || "",
+          phone: profileData.phone || "",
+          username: telegramUsername,
+          dateOfBirth: profileData.dateOfBirth || profileData.date_of_birth || "",
+          bloodType: profileData.bloodType || profileData.blood_type || "",
+          allergies: profileData.allergies || "",
+          medicalConditions: profileData.medicalConditions || profileData.medical_conditions || ""
+        };
+        setProfile(updatedProfile);
+        setFormData(updatedProfile);
+      } else {
+        // Fallback: reload from backend
+        await loadProfile();
+      }
       setIsEditing(false);
-      // Also save to localStorage as backup
-      localStorage.setItem("userProfile", JSON.stringify(formData));
     } catch (error) {
       console.error("Error saving profile:", error);
       alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
@@ -245,8 +300,9 @@ export default function Profile() {
             <div className="avatar-placeholder">👤</div>
           </div>
           <div className="profile-name">
-            <h2>{profile.name}</h2>
-            <p className="profile-email">{profile.email}</p>
+            <h2>{profile.name || t("profile.title")}</h2>
+            {profile.email && <p className="profile-email">{profile.email}</p>}
+            {profile.username && <p className="profile-username" style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>@{profile.username}</p>}
           </div>
           {!isEditing && (
             <button className="edit-btn" onClick={() => setIsEditing(true)} title={t("common.edit")}>
@@ -266,26 +322,39 @@ export default function Profile() {
               type="text"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder={t("profile.namePlaceholder") || "Enter your name"}
             />
           </div>
           <div className="form-group">
-            <label>Email</label>
+            <label>{t("profile.email") || "Email"}</label>
             <input
               type="email"
               value={formData.email}
               onChange={e => setFormData({ ...formData, email: e.target.value })}
+              placeholder={t("profile.emailPlaceholder") || "Enter your email"}
             />
           </div>
           <div className="form-group">
-            <label>{t("profile.contactTelegram").replace("Telegram ", "")}</label>
+            <label>{t("profile.username") || "Username"}</label>
+            <input
+              type="text"
+              value={formData.username}
+              disabled
+              style={{ background: '#f5f5f5', color: '#666' }}
+              placeholder={t("profile.usernamePlaceholder") || "Telegram username"}
+            />
+          </div>
+          <div className="form-group">
+            <label>{t("profile.phone") || "Phone"}</label>
             <input
               type="tel"
               value={formData.phone}
               onChange={e => setFormData({ ...formData, phone: e.target.value })}
+              placeholder={t("profile.phonePlaceholder") || "+1 (555) 123-4567"}
             />
           </div>
           <div className="form-group">
-            <label>{t("health.date")}</label>
+            <label>{t("profile.dateOfBirth") || t("health.date")}</label>
             <input
               type="date"
               value={formData.dateOfBirth}
@@ -298,6 +367,7 @@ export default function Profile() {
               type="text"
               value={formData.bloodType}
               onChange={e => setFormData({ ...formData, bloodType: e.target.value })}
+              placeholder={t("profile.bloodTypePlaceholder") || "e.g., O+"}
             />
           </div>
           <div className="form-group">
@@ -306,6 +376,16 @@ export default function Profile() {
               type="text"
               value={formData.allergies}
               onChange={e => setFormData({ ...formData, allergies: e.target.value })}
+              placeholder={t("profile.allergiesPlaceholder") || "e.g., Penicillin"}
+            />
+          </div>
+          <div className="form-group">
+            <label>{t("profile.medicalConditions")}</label>
+            <input
+              type="text"
+              value={formData.medicalConditions}
+              onChange={e => setFormData({ ...formData, medicalConditions: e.target.value })}
+              placeholder={t("profile.medicalConditionsPlaceholder") || "Enter medical conditions"}
             />
           </div>
           <div className="form-actions">
@@ -321,16 +401,28 @@ export default function Profile() {
           <h3>{t("profile.medicalInfo")}</h3>
           <div className="info-row">
             <span className="label">{t("profile.bloodType")}:</span>
-            <span className="value">{profile.bloodType}</span>
+            <span className="value">{profile.bloodType || "-"}</span>
           </div>
           <div className="info-row">
             <span className="label">{t("profile.allergies")}:</span>
-            <span className="value">{profile.allergies}</span>
+            <span className="value">{profile.allergies || "-"}</span>
           </div>
           <div className="info-row">
             <span className="label">{t("profile.medicalConditions")}:</span>
-            <span className="value">{profile.medicalConditions}</span>
+            <span className="value">{profile.medicalConditions || "-"}</span>
           </div>
+          {profile.phone && (
+            <div className="info-row">
+              <span className="label">{t("profile.phone") || "Phone"}:</span>
+              <span className="value">{profile.phone}</span>
+            </div>
+          )}
+          {profile.dateOfBirth && (
+            <div className="info-row">
+              <span className="label">{t("profile.dateOfBirth") || t("health.date")}:</span>
+              <span className="value">{new Date(profile.dateOfBirth).toLocaleDateString()}</span>
+            </div>
+          )}
         </Card>
       )}
 

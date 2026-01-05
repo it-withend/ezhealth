@@ -50,23 +50,74 @@ router.put('/profile', authenticate, async (req, res) => {
     const first_name = nameParts[0] || null;
     const last_name = nameParts.slice(1).join(' ') || null;
 
-    await dbRun(
-      `UPDATE users SET 
-        first_name = COALESCE(?, first_name),
-        last_name = COALESCE(?, last_name),
-        email = COALESCE(?, email),
-        phone = COALESCE(?, phone),
-        date_of_birth = COALESCE(?, date_of_birth),
-        blood_type = COALESCE(?, blood_type),
-        allergies = COALESCE(?, allergies),
-        medical_conditions = COALESCE(?, medical_conditions),
-        updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [first_name, last_name, email, phone, dateOfBirth, bloodType, allergies, medicalConditions, userId]
-    );
+    // Update only provided fields (don't overwrite with null if field is empty string)
+    const updates = [];
+    const values = [];
+    
+    if (name !== undefined) {
+      updates.push('first_name = ?');
+      updates.push('last_name = ?');
+      values.push(first_name);
+      values.push(last_name);
+    }
+    if (email !== undefined) {
+      updates.push('email = ?');
+      values.push(email || null);
+    }
+    if (phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(phone || null);
+    }
+    if (dateOfBirth !== undefined) {
+      updates.push('date_of_birth = ?');
+      values.push(dateOfBirth || null);
+    }
+    if (bloodType !== undefined) {
+      updates.push('blood_type = ?');
+      values.push(bloodType || null);
+    }
+    if (allergies !== undefined) {
+      updates.push('allergies = ?');
+      values.push(allergies || null);
+    }
+    if (medicalConditions !== undefined) {
+      updates.push('medical_conditions = ?');
+      values.push(medicalConditions || null);
+    }
+    
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    if (updates.length > 1) { // More than just updated_at
+      await dbRun(
+        `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      );
+    }
 
     console.log(`✅ Profile updated for user ${userId}`);
-    res.json({ success: true, message: 'Profile updated successfully' });
+    
+    // Return updated profile
+    const updatedUser = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
+    res.json({ 
+      success: true, 
+      message: 'Profile updated successfully',
+      profile: {
+        id: updatedUser.id,
+        name: updatedUser.first_name || updatedUser.last_name ? `${updatedUser.first_name || ''} ${updatedUser.last_name || ''}`.trim() : 'User',
+        email: updatedUser.email || '',
+        phone: updatedUser.phone || '',
+        dateOfBirth: updatedUser.date_of_birth || '',
+        bloodType: updatedUser.blood_type || '',
+        allergies: updatedUser.allergies || '',
+        medicalConditions: updatedUser.medical_conditions || '',
+        telegram_id: updatedUser.telegram_id,
+        first_name: updatedUser.first_name,
+        last_name: updatedUser.last_name,
+        username: updatedUser.username,
+        photo_url: updatedUser.photo_url
+      }
+    });
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Internal server error' });
