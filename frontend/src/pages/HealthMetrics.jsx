@@ -501,15 +501,27 @@ export default function HealthMetrics() {
     }
   };
 
+  // Track initial load to prevent infinite loops
+  const initialLoadRef = useRef(false);
+  
   useEffect(() => {
+    // Only load metrics once on mount
+    if (initialLoadRef.current) {
+      // Only reload chart when metric selection changes
+      loadChartData();
+      return;
+    }
+    
+    initialLoadRef.current = true;
+    
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         location: 'HealthMetrics.jsx:useEffect',
-        message: 'useEffect triggered',
-        data: { hasUser: !!user, userId: user?.id, selectedMetric, loadMetricsDefined: typeof loadMetrics, loadChartDataDefined: typeof loadChartData },
+        message: 'useEffect triggered - INITIAL LOAD',
+        data: { hasUser: !!user, userId: user?.id, selectedMetric },
         timestamp: Date.now(),
         sessionId: 'debug-session',
         runId: 'run1',
@@ -522,70 +534,23 @@ export default function HealthMetrics() {
     try {
       if (typeof loadMetrics === 'function') {
         loadMetrics();
-      } else {
-        console.error('loadMetrics is not defined!');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: 'HealthMetrics.jsx:useEffect',
-            message: 'loadMetrics NOT DEFINED',
-            data: { loadMetricsType: typeof loadMetrics },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'C'
-          })
-        }).catch(() => {});
-        // #endregion
       }
       
       if (typeof loadChartData === 'function') {
         loadChartData();
-      } else {
-        console.error('loadChartData is not defined!');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: 'HealthMetrics.jsx:useEffect',
-            message: 'loadChartData NOT DEFINED',
-            data: { loadChartDataType: typeof loadChartData },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'C'
-          })
-        }).catch(() => {});
-        // #endregion
       }
     } catch (error) {
       console.error('Error in useEffect calling load functions:', error);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'HealthMetrics.jsx:useEffect',
-          message: 'useEffect ERROR calling load functions',
-          data: { error: error.message, stack: error.stack },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C'
-        })
-      }).catch(() => {});
-      // #endregion
     }
-  }, [user, selectedMetric]);
+  }, [selectedMetric]); // Only depend on selectedMetric
 
-  // Force reload metrics after a short delay when component is visible
+  // Force reload metrics after a short delay when component is visible (only once)
+  const autoReloadDoneRef = useRef(false);
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !autoReloadDoneRef.current) {
+      autoReloadDoneRef.current = true;
       const timer = setTimeout(() => {
-        console.log("Auto-reloading metrics...");
+        console.log("Auto-reloading metrics (one time)...");
         loadMetrics();
       }, 1000);
       return () => clearTimeout(timer);

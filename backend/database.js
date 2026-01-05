@@ -6,7 +6,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'health.db');
+// On Render, use persistent disk path if available, otherwise use /tmp
+const dbPath = process.env.DATABASE_PATH || 
+  (process.env.RENDER ? '/tmp/health.db' : path.join(__dirname, 'health.db'));
+
+console.log(`📁 Database path: ${dbPath}`);
+console.log(`📁 RENDER env: ${process.env.RENDER || 'not set'}`);
+console.log(`📁 DATABASE_PATH env: ${process.env.DATABASE_PATH || 'not set'}`);
 
 let database = null;
 

@@ -130,12 +130,22 @@ router.post("/metrics", authenticate, async (req, res) => {
     const userIdInt = parseInt(userId, 10);
     console.log(`📊 INSERT: userId=${userId} -> userIdInt=${userIdInt} (type: ${typeof userIdInt})`);
     
+    console.log(`📊 About to INSERT: userIdInt=${userIdInt}, type=${type}, value=${value}, unit=${unit || null}`);
+    
     const result = await dbRun(
       'INSERT INTO health_metrics (user_id, type, value, unit, notes, source) VALUES (?, ?, ?, ?, ?, ?)',
       [userIdInt, type, value, unit || null, notes || null, 'manual']
     );
     
-    console.log(`✅ Health metric added: ID=${result.lastID}, userId=${userId}, type=${type}, value=${value}`);
+    console.log(`✅ Health metric added: ID=${result.lastID}, changes=${result.changes}, userId=${userIdInt}, type=${type}, value=${value}`);
+    
+    if (result.changes === 0) {
+      console.error(`❌ INSERT returned 0 changes! Something went wrong.`);
+    }
+    
+    // Immediately check if it was saved
+    const immediateCheck = await dbAll('SELECT COUNT(*) as count FROM health_metrics');
+    console.log(`📊 Total metrics in table after insert: ${immediateCheck[0]?.count || 0}`);
     
     // Verify the metric was saved correctly
     const savedMetric = await dbGet(
