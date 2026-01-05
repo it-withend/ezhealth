@@ -75,14 +75,18 @@ router.post("/metrics", authenticate, async (req, res) => {
     const userId = req.userId;
     const { type, value, unit, notes } = req.body;
 
+    console.log(`📊 Adding health metric: userId=${userId}, type=${type}, value=${value}, unit=${unit}`);
+
     if (!type || value === undefined) {
       return res.status(400).json({ error: 'type and value are required' });
     }
 
     const result = await dbRun(
-      'INSERT INTO health_metrics (user_id, type, value, unit, notes) VALUES (?, ?, ?, ?, ?)',
-      [userId, type, value, unit || null, notes || null]
+      'INSERT INTO health_metrics (user_id, type, value, unit, notes, source) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, type, value, unit || null, notes || null, 'manual']
     );
+    
+    console.log(`✅ Health metric added: ID=${result.lastID}`);
 
     // Check for critical values and trigger alerts
     try {
@@ -205,6 +209,8 @@ router.get("/metrics/stats", authenticate, async (req, res) => {
       return res.status(400).json({ error: 'type is required' });
     }
 
+    console.log(`📈 Getting stats: userId=${userId}, type=${type}, days=${days}`);
+
     const metrics = await dbAll(
       `SELECT value, recorded_at, unit 
        FROM health_metrics 
@@ -214,12 +220,18 @@ router.get("/metrics/stats", authenticate, async (req, res) => {
       [userId, type]
     );
 
+    console.log(`📈 Found ${metrics.length} metrics for type ${type}`);
+
     // Format for charts
     const chartData = metrics.map(m => ({
-      date: new Date(m.recorded_at).toLocaleDateString('en-US', { weekday: 'short' }),
-      value: m.value,
-      fullDate: m.recorded_at
+      date: new Date(m.recorded_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      value: parseFloat(m.value),
+      fullDate: m.recorded_at,
+      timestamp: new Date(m.recorded_at).getTime()
     }));
+
+    // Sort by timestamp to ensure correct order
+    chartData.sort((a, b) => a.timestamp - b.timestamp);
 
     res.json({
       success: true,

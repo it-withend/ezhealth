@@ -14,7 +14,10 @@ export const translations = {
       no: "No",
       loading: "Loading...",
       error: "Error",
-      success: "Success"
+      success: "Success",
+      show: "Show",
+      hide: "Hide",
+      syncing: "Syncing..."
     },
     // Navigation
     nav: {
@@ -117,7 +120,16 @@ export const translations = {
       systolic: "Blood Pressure (Systolic)",
       diastolic: "Blood Pressure (Diastolic)",
       sugar: "Blood Sugar",
-      unit: "Unit"
+      unit: "Unit",
+      syncApps: "Sync with Health Apps",
+      connect: "Connect",
+      disconnect: "Disconnect",
+      syncNow: "Sync Now",
+      lastSync: "Last sync",
+      notSynced: "Not synced yet",
+      appConnected: "App connected successfully",
+      appDisconnected: "App disconnected",
+      syncSuccess: "Data synced successfully"
     },
     // Documents
     documents: {
@@ -304,7 +316,16 @@ export const translations = {
       systolic: "Артериальное давление (Систолическое)",
       diastolic: "Артериальное давление (Диастолическое)",
       sugar: "Сахар в крови",
-      unit: "Единица измерения"
+      unit: "Единица измерения",
+      syncApps: "Синхронизация с приложениями здоровья",
+      connect: "Подключить",
+      disconnect: "Отключить",
+      syncNow: "Синхронизировать сейчас",
+      lastSync: "Последняя синхронизация",
+      notSynced: "Еще не синхронизировано",
+      appConnected: "Приложение успешно подключено",
+      appDisconnected: "Приложение отключено",
+      syncSuccess: "Данные успешно синхронизированы"
     },
     // Documents
     documents: {

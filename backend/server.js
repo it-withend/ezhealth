@@ -11,6 +11,7 @@ import { initDatabase } from "./database.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/user.js";
 import healthRoutes from "./routes/health.js";
+import healthSyncRoutes from "./routes/healthSync.js";
 import analysisRoutes from "./routes/analysis.js";
 import reminderRoutes from "./routes/reminders.js";
 import contactRoutes from "./routes/contacts.js";
@@ -55,6 +56,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/health", healthRoutes);
+app.use("/api/health/sync", healthSyncRoutes);
 app.use("/api/analysis", analysisRoutes);
 app.use("/api/reminders", reminderRoutes);
 app.use("/api/contacts", contactRoutes);

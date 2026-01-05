@@ -69,6 +69,7 @@ export function initDatabase() {
             value REAL,
             unit TEXT,
             notes TEXT,
+            source TEXT DEFAULT 'manual',
             recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
           )
@@ -232,8 +233,15 @@ export function initDatabase() {
                                   reject(err);
                                   return;
                                 }
-                                console.log('Database initialized');
-                                resolve();
+                                database.run(`CREATE INDEX IF NOT EXISTS idx_health_app_sync_user ON health_app_sync(user_id, sync_enabled)`, (err) => {
+                                  if (err) {
+                                    console.error('Error creating index:', err);
+                                    reject(err);
+                                    return;
+                                  }
+                                  console.log('Database initialized');
+                                  resolve();
+                                });
                               });
                             });
                           });

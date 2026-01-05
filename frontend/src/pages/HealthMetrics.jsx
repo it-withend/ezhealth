@@ -8,6 +8,7 @@ import Card from "../ui/components/Card";
 import { api } from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
+import HealthAppSync from "../components/HealthAppSync";
 import "../styles/HealthMetrics.css";
 
 export default function HealthMetrics() {
@@ -73,6 +74,7 @@ export default function HealthMetrics() {
   });
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showSyncApps, setShowSyncApps] = useState(false);
   const [formData, setFormData] = useState({
     type: "pulse",
     value: "",
@@ -161,32 +163,62 @@ export default function HealthMetrics() {
       // Get latest values for each metric type
       const latestValues = {};
       allMetrics.forEach(m => {
-        if (!latestValues[m.type] || new Date(m.recorded_at) > new Date(latestValues[m.type].recorded_at)) {
-          latestValues[m.type] = m;
+        const metricType = m.type;
+        if (!latestValues[metricType] || new Date(m.recorded_at) > new Date(latestValues[metricType].recorded_at)) {
+          latestValues[metricType] = m;
         }
       });
 
       console.log("Latest values:", latestValues);
+      console.log("All metrics from API:", allMetrics);
 
       // Update metrics with latest values
       setMetrics(prev => prev.map(m => {
-        const latest = latestValues[m.id];
+        // Map metric IDs to API types
+        const typeMap = {
+          pulse: "pulse",
+          sleep: "sleep",
+          weight: "weight",
+          pressure: "pressure", // Can be "pressure", "systolic", or "diastolic"
+          sugar: "sugar"
+        };
+        
+        const apiType = typeMap[m.id];
+        const latest = latestValues[apiType];
+        
         if (latest) {
           let current = latest.value;
+          
+          // For pressure, check for systolic and diastolic separately
           if (m.id === "pressure") {
-            // For pressure, check for systolic and diastolic separately
-            const systolic = latestValues.systolic;
-            const diastolic = latestValues.diastolic;
+            const systolic = latestValues["systolic"];
+            const diastolic = latestValues["diastolic"];
+            const pressure = latestValues["pressure"];
+            
             if (systolic && diastolic) {
+              // Both systolic and diastolic available
               current = `${systolic.value}/${diastolic.value}`;
-            } else if (latest.type === "systolic" || latest.type === "diastolic") {
-              // If only one part is available, show it
-              current = latest.value;
+            } else if (pressure) {
+              // Single pressure value
+              current = pressure.value;
+            } else if (systolic || diastolic) {
+              // Only one part available
+              current = systolic ? `${systolic.value}/-` : `-/${diastolic.value}`;
+            } else {
+              current = "-";
             }
+          } else {
+            // For other metrics, use the value directly
+            current = latest.value;
           }
+          
+          console.log(`Updated ${m.id}: ${current}`);
           return { ...m, current };
         }
-        return { ...m, current: m.id === "pressure" ? "-" : 0 };
+        
+        // No data found, keep default
+        const defaultValue = m.id === "pressure" ? "-" : 0;
+        return { ...m, current: defaultValue };
       }));
     } catch (error) {
       // #region agent log
@@ -276,21 +308,28 @@ export default function HealthMetrics() {
     if (!formData.value) return;
 
     try {
-      await api.post("/health/metrics", {
+      console.log("Adding metric:", formData);
+      const response = await api.post("/health/metrics", {
         type: formData.type,
         value: parseFloat(formData.value),
         unit: formData.unit || getDefaultUnit(formData.type),
         notes: formData.notes
       });
       
+      console.log("Metric added successfully:", response.data);
+      
       setFormData({ type: "pulse", value: "", unit: "", notes: "" });
       setShowAddForm(false);
-      // Reload data after adding
-      await loadMetrics();
-      await loadChartData();
+      
+      // Reload data after adding - wait a bit for DB to update
+      setTimeout(async () => {
+        await loadMetrics();
+        await loadChartData();
+      }, 300);
     } catch (error) {
       console.error("Error adding metric:", error);
-      alert(t("common.error"));
+      console.error("Error details:", error.response?.data);
+      alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
     }
   };
 
