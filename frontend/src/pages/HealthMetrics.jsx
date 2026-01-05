@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -94,60 +94,7 @@ export default function HealthMetrics() {
     })));
   }, [t]);
 
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'HealthMetrics.jsx:useEffect',
-        message: 'useEffect triggered',
-        data: { hasUser: !!user, userId: user?.id, selectedMetric },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'C'
-      })
-    }).catch(() => {});
-    // #endregion
-
-    // Backend uses middleware to get user_id from initData, so we don't need user check
-    loadMetrics();
-    loadChartData();
-  }, [user, selectedMetric]);
-
-  // Force reload metrics after a short delay when component is visible
-  useEffect(() => {
-    if (!loading) {
-      const timer = setTimeout(() => {
-        console.log("Auto-reloading metrics...");
-        loadMetrics();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [loading]);
-
-  // Log metrics state changes to track if setMetrics actually updates the state
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'HealthMetrics.jsx:useEffect[metrics]',
-        message: 'METRICS STATE CHANGED',
-        data: { 
-          metrics: metrics.map(m => ({ id: m.id, name: m.name, current: m.current, currentType: typeof m.current }))
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'H4'
-      })
-    }).catch(() => {});
-    // #endregion
-  }, [metrics]);
-
+  // Define loadMetrics before useEffect that uses it
   const loadMetrics = async () => {
     // Backend uses middleware to get user_id from initData, so we don't need user.id
     // But we still log if user is available for debugging
@@ -201,7 +148,6 @@ export default function HealthMetrics() {
             frontendUserIdType: userIdType,
             responseUserId: responseUserId,
             responseUserIdType: responseUserIdType,
-            userIdsMatch: String(frontendUserId) === String(responseUserId),
             metricsCount: allMetrics.length,
             sampleMetrics: allMetrics.slice(0, 5).map(m => ({ 
               id: m.id, 
@@ -221,38 +167,11 @@ export default function HealthMetrics() {
       // #endregion
       
       console.log("📊 API Response:", {
-        userId: responseUserId,
-        currentUser: user?.id,
+        backendUserId: responseUserId,
+        frontendUser: user?.id || 'null',
         metricsCount: allMetrics.length,
         sampleMetrics: allMetrics.slice(0, 3).map(m => ({ id: m.id, type: m.type, value: m.value, user_id: m.user_id }))
       });
-      
-      if (responseUserId && user?.id && String(responseUserId) !== String(user.id)) {
-        console.warn(`⚠️ User ID mismatch! API returned userId=${responseUserId}, but current user.id=${user.id}`);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location: 'HealthMetrics.jsx:loadMetrics',
-            message: 'USER ID MISMATCH DETECTED',
-            data: { 
-              frontendUserId: frontendUserId,
-              responseUserId: responseUserId,
-              comparison: {
-                strict: frontendUserId === responseUserId,
-                string: String(frontendUserId) === String(responseUserId),
-                number: Number(frontendUserId) === Number(responseUserId)
-              }
-            },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'H1'
-          })
-        }).catch(() => {});
-        // #endregion
-      }
       
       // Get latest values for each metric type
       const latestValues = {};
@@ -433,21 +352,6 @@ export default function HealthMetrics() {
         })
       }).catch(() => {});
       // #endregion
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'HealthMetrics.jsx:loadMetrics',
-          message: 'loadMetrics error',
-          data: { error: error.message, status: error.response?.status, responseData: error.response?.data },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C'
-        })
-      }).catch(() => {});
-      // #endregion
       console.error("Error loading metrics:", error);
       console.error("Error details:", error.response?.data);
     } finally {
@@ -455,6 +359,7 @@ export default function HealthMetrics() {
     }
   };
 
+  // Define loadChartData before useEffect that uses it
   const loadChartData = async () => {
     // Backend uses middleware to get user_id from initData, so we don't need user check
     if (!selectedMetric) return; // Don't load if no metric selected
@@ -595,6 +500,118 @@ export default function HealthMetrics() {
       // #endregion
     }
   };
+
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect',
+        message: 'useEffect triggered',
+        data: { hasUser: !!user, userId: user?.id, selectedMetric, loadMetricsDefined: typeof loadMetrics, loadChartDataDefined: typeof loadChartData },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'C'
+      })
+    }).catch(() => {});
+    // #endregion
+
+    // Backend uses middleware to get user_id from initData, so we don't need user check
+    try {
+      if (typeof loadMetrics === 'function') {
+        loadMetrics();
+      } else {
+        console.error('loadMetrics is not defined!');
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:useEffect',
+            message: 'loadMetrics NOT DEFINED',
+            data: { loadMetricsType: typeof loadMetrics },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'C'
+          })
+        }).catch(() => {});
+        // #endregion
+      }
+      
+      if (typeof loadChartData === 'function') {
+        loadChartData();
+      } else {
+        console.error('loadChartData is not defined!');
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:useEffect',
+            message: 'loadChartData NOT DEFINED',
+            data: { loadChartDataType: typeof loadChartData },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'C'
+          })
+        }).catch(() => {});
+        // #endregion
+      }
+    } catch (error) {
+      console.error('Error in useEffect calling load functions:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:useEffect',
+          message: 'useEffect ERROR calling load functions',
+          data: { error: error.message, stack: error.stack },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'C'
+        })
+      }).catch(() => {});
+      // #endregion
+    }
+  }, [user, selectedMetric]);
+
+  // Force reload metrics after a short delay when component is visible
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        console.log("Auto-reloading metrics...");
+        loadMetrics();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  // Log metrics state changes to track if setMetrics actually updates the state
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect[metrics]',
+        message: 'METRICS STATE CHANGED',
+        data: { 
+          metrics: metrics.map(m => ({ id: m.id, name: m.name, current: m.current, currentType: typeof m.current }))
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H4'
+      })
+    }).catch(() => {});
+    // #endregion
+  }, [metrics]);
 
   const handleAddMetric = async (e) => {
     e.preventDefault();
