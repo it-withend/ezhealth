@@ -192,11 +192,53 @@ Please refer to the app's official documentation for OAuth setup instructions.`;
     
     setSyncing(prev => ({ ...prev, [appId]: true }));
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthAppSync.jsx:handleSync',
+        message: 'handleSync ENTRY',
+        data: { 
+          appId: appId,
+          appName: apps.find(a => a.id === appId)?.name,
+          hasUser: !!user,
+          userId: user?.id
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H1'
+      })
+    }).catch(() => {});
+    // #endregion
+    
     try {
       // Use the manual sync endpoint that fetches real data from the API
       const response = await api.post(`/health/sync/sync/${appId}`, {}, {
         params: { days: 7 } // Sync last 7 days
       });
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthAppSync.jsx:handleSync',
+          message: 'handleSync SUCCESS',
+          data: { 
+            appId: appId,
+            syncedCount: response.data?.syncedCount || 0,
+            message: response.data?.message,
+            responseData: response.data
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
       
       const syncedCount = response.data?.syncedCount || 0;
       const message = response.data?.message || t("health.syncSuccess") || `Synced data from ${apps.find(a => a.id === appId)?.name}`;
@@ -206,6 +248,29 @@ Please refer to the app's official documentation for OAuth setup instructions.`;
       // Reload page data to show synced metrics
       window.location.reload();
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthAppSync.jsx:handleSync',
+          message: 'handleSync ERROR',
+          data: { 
+            appId: appId,
+            error: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            responseData: error.response?.data,
+            needsReconnect: error.response?.data?.needsReconnect
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
+      
       console.error("Error syncing:", error);
       const errorMessage = error.response?.data?.error || error.message;
       const needsReconnect = error.response?.data?.needsReconnect;

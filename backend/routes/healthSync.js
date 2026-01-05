@@ -366,9 +366,10 @@ router.post('/sync/:appName', async (req, res) => {
     const appName = req.params.appName;
     const { days = 7 } = req.query;
 
-    console.log(`🔄 Manual sync requested for ${appName}, user ${userId}, days: ${days}`);
+    console.log(`🔄 POST /health/sync/sync/${appName} - userId=${userId}, days=${days}`);
 
     if (!SUPPORTED_APPS[appName]) {
+      console.log(`🔄 ERROR: Invalid app name: ${appName}`);
       return res.status(400).json({ error: 'Invalid app name' });
     }
 
@@ -378,12 +379,87 @@ router.post('/sync/:appName', async (req, res) => {
       [userId, appName]
     );
 
+    console.log(`🔄 Connection found:`, connection ? { 
+      appName: connection.app_name, 
+      hasToken: !!connection.access_token,
+      tokenPrefix: connection.access_token ? connection.access_token.substring(0, 10) + '...' : 'none',
+      isMockToken: connection.access_token?.startsWith('mock_token')
+    } : 'not found');
+
     if (!connection) {
+      console.log(`🔄 ERROR: App not connected`);
       return res.status(404).json({ error: 'App not connected' });
     }
 
     if (!connection.access_token) {
+      console.log(`🔄 ERROR: Access token not found`);
       return res.status(400).json({ error: 'Access token not found. Please reconnect the app.' });
+    }
+
+    // Check if it's a mock token
+    if (connection.access_token.startsWith('mock_token')) {
+      console.log(`🔄 Mock token detected - generating sample data`);
+      // Generate sample data for testing
+      const sampleMetrics = [
+        { type: 'com.google.heart_rate.bpm', value: 72 + Math.floor(Math.random() * 10), unit: 'bpm', timestamp: Date.now() * 1000000 },
+        { type: 'com.google.sleep.segment', value: 7.5 + Math.random(), unit: 'hours', timestamp: (Date.now() - 86400000) * 1000000 },
+        { type: 'com.google.weight', value: 70 + Math.random() * 5, unit: 'kg', timestamp: (Date.now() - 172800000) * 1000000 }
+      ];
+      
+      // Map and save sample metrics
+      const metricTypeMap = {
+        google_fit: {
+          'com.google.heart_rate.bpm': 'pulse',
+          'com.google.sleep.segment': 'sleep',
+          'com.google.weight': 'weight'
+        }
+      };
+      
+      const typeMap = metricTypeMap[appName] || {};
+      let syncedCount = 0;
+
+      for (const metric of sampleMetrics) {
+        const internalType = typeMap[metric.type] || metric.type;
+        
+        if (!['pulse', 'sleep', 'weight', 'pressure', 'systolic', 'diastolic', 'sugar'].includes(internalType)) {
+          continue;
+        }
+
+        try {
+          const timestamp = metric.timestamp 
+            ? new Date(Math.floor(metric.timestamp / 1000000)).toISOString().replace('T', ' ').substring(0, 19)
+            : null;
+
+          await dbRun(
+            `INSERT INTO health_metrics (user_id, type, value, unit, notes, source, recorded_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              userId,
+              internalType,
+              metric.value,
+              metric.unit || null,
+              `Synced from ${SUPPORTED_APPS[appName].name} (test data)`,
+              appName,
+              timestamp || 'CURRENT_TIMESTAMP'
+            ]
+          );
+          syncedCount++;
+        } catch (error) {
+          console.error(`Error syncing metric ${metric.type}:`, error);
+        }
+      }
+
+      await dbRun(
+        `UPDATE health_app_sync SET last_sync = CURRENT_TIMESTAMP WHERE user_id = ? AND app_name = ?`,
+        [userId, appName]
+      );
+
+      console.log(`✅ Synced ${syncedCount} test metrics from ${appName} for user ${userId}`);
+      return res.json({ 
+        success: true, 
+        syncedCount,
+        message: `Synced ${syncedCount} test metrics from ${SUPPORTED_APPS[appName].name}` 
+      });
     }
 
     let metrics = [];
@@ -391,12 +467,14 @@ router.post('/sync/:appName', async (req, res) => {
     // Fetch data from the health app API
     if (appName === 'google_fit') {
       try {
+        console.log(`🔄 Fetching data from Google Fit API...`);
         metrics = await fetchGoogleFitData(connection.access_token, parseInt(days));
         console.log(`📊 Fetched ${metrics.length} metrics from Google Fit`);
       } catch (error) {
-        console.error('Error fetching from Google Fit:', error);
+        console.error('🔄 Error fetching from Google Fit:', error);
+        console.error('🔄 Error details:', error.message, error.stack);
         // If token expired, try to refresh
-        if (error.message && error.message.includes('401')) {
+        if (error.message && (error.message.includes('401') || error.message.includes('unauthorized'))) {
           return res.status(401).json({ 
             error: 'Access token expired. Please reconnect the app.',
             needsReconnect: true
@@ -405,12 +483,82 @@ router.post('/sync/:appName', async (req, res) => {
         throw error;
       }
     } else {
-      // For other apps, return message that integration is not yet implemented
-      return res.json({ 
-        success: true, 
-        message: `Sync for ${SUPPORTED_APPS[appName].name} is not yet fully implemented. Please use the manual sync endpoint with metrics.`,
-        syncedCount: 0
-      });
+      // For other apps, generate sample data if mock token, otherwise return message
+      if (connection.access_token.startsWith('mock_token')) {
+        console.log(`🔄 Mock token detected for ${appName} - generating sample data`);
+        const sampleMetrics = [
+          { type: 'heart_rate', value: 72 + Math.floor(Math.random() * 10), unit: 'bpm', timestamp: Date.now() * 1000000 },
+          { type: 'sleep', value: 7.5 + Math.random(), unit: 'hours', timestamp: (Date.now() - 86400000) * 1000000 },
+          { type: 'weight', value: 70 + Math.random() * 5, unit: 'kg', timestamp: (Date.now() - 172800000) * 1000000 }
+        ];
+        
+        const metricTypeMap = {
+          mi_fit: {
+            'heart_rate': 'pulse',
+            'sleep': 'sleep',
+            'weight': 'weight'
+          },
+          apple_health: {
+            'heart_rate': 'pulse',
+            'sleep': 'sleep',
+            'weight': 'weight'
+          }
+        };
+        
+        const typeMap = metricTypeMap[appName] || {};
+        let syncedCount = 0;
+
+        for (const metric of sampleMetrics) {
+          const internalType = typeMap[metric.type] || metric.type;
+          
+          if (!['pulse', 'sleep', 'weight', 'pressure', 'systolic', 'diastolic', 'sugar'].includes(internalType)) {
+            continue;
+          }
+
+          try {
+            const timestamp = metric.timestamp 
+              ? new Date(Math.floor(metric.timestamp / 1000000)).toISOString().replace('T', ' ').substring(0, 19)
+              : null;
+
+            await dbRun(
+              `INSERT INTO health_metrics (user_id, type, value, unit, notes, source, recorded_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [
+                userId,
+                internalType,
+                metric.value,
+                metric.unit || null,
+                `Synced from ${SUPPORTED_APPS[appName].name} (test data)`,
+                appName,
+                timestamp || 'CURRENT_TIMESTAMP'
+              ]
+            );
+            syncedCount++;
+          } catch (error) {
+            console.error(`Error syncing metric ${metric.type}:`, error);
+          }
+        }
+
+        await dbRun(
+          `UPDATE health_app_sync SET last_sync = CURRENT_TIMESTAMP WHERE user_id = ? AND app_name = ?`,
+          [userId, appName]
+        );
+
+        console.log(`✅ Synced ${syncedCount} test metrics from ${appName} for user ${userId}`);
+        return res.json({ 
+          success: true, 
+          syncedCount,
+          message: `Synced ${syncedCount} test metrics from ${SUPPORTED_APPS[appName].name}` 
+        });
+      } else {
+        // For other apps, return message that integration is not yet implemented
+        console.log(`🔄 Sync for ${appName} not fully implemented`);
+        return res.json({ 
+          success: true, 
+          message: `Sync for ${SUPPORTED_APPS[appName].name} is not yet fully implemented. Please use the manual sync endpoint with metrics.`,
+          syncedCount: 0
+        });
+      }
     }
 
     // Map and save metrics
