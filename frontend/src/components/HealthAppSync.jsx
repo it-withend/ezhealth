@@ -188,7 +188,12 @@ Please refer to the app's official documentation for OAuth setup instructions.`;
   };
 
   const handleSync = async (appId) => {
-    if (!user) return;
+    // Backend uses initData from headers to get userId, so we don't need user check
+    // But log if user is available for debugging
+    if (!appId) {
+      console.error("handleSync called without appId");
+      return;
+    }
     
     setSyncing(prev => ({ ...prev, [appId]: true }));
     
@@ -214,10 +219,13 @@ Please refer to the app's official documentation for OAuth setup instructions.`;
     // #endregion
     
     try {
+      console.log(`🔄 Starting sync for ${appId}...`);
       // Use the manual sync endpoint that fetches real data from the API
       const response = await api.post(`/health/sync/sync/${appId}`, {}, {
         params: { days: 7 } // Sync last 7 days
       });
+      
+      console.log(`🔄 Sync response:`, response.data);
       
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
