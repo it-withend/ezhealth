@@ -163,6 +163,57 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// Initialize Google Fit OAuth - create state token
+router.post('/google-fit/init', async (req, res) => {
+  try {
+    // Get userId from initData or body
+    const initData = req.headers['x-telegram-init-data'];
+    let userId = null;
+    
+    if (initData) {
+      try {
+        const params = new URLSearchParams(initData);
+        const userParam = params.get('user');
+        if (userParam) {
+          const user = JSON.parse(decodeURIComponent(userParam));
+          const telegramId = user.id;
+          const userRecord = await dbGet('SELECT id FROM users WHERE telegram_id = ?', [telegramId]);
+          if (userRecord) {
+            userId = userRecord.id;
+          }
+        }
+      } catch (err) {
+        console.error('Error parsing initData:', err);
+      }
+    }
+    
+    if (!userId && req.body.userId) {
+      userId = parseInt(req.body.userId);
+    }
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Generate secure state token
+    const stateToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Save state token to database
+    await dbRun(
+      `INSERT INTO oauth_states (state_token, user_id, app_name, expires_at) VALUES (?, ?, 'google_fit', ?)`,
+      [stateToken, userId, expiresAt.toISOString()]
+    );
+    
+    console.log(`🔐 Created OAuth state token for user ${userId}: ${stateToken.substring(0, 8)}...`);
+    
+    res.json({ stateToken, userId });
+  } catch (error) {
+    console.error('Error initializing OAuth:', error);
+    res.status(500).json({ error: 'Failed to initialize OAuth' });
+  }
+});
+
 // Google Fit OAuth callback - no authentication required (external callback from Google)
 router.get('/google-fit/callback', async (req, res) => {
   try {
@@ -202,7 +253,19 @@ router.get('/google-fit/callback', async (req, res) => {
     }
     
     if (error) {
-      console.error('Google OAuth error:', error);
+      console.error('❌ Google OAuth error received:', error);
+      console.error('❌ Error details:', JSON.stringify(req.query, null, 2));
+      
+      // Log specific error types for debugging
+      if (error === 'access_denied') {
+        console.error('❌ ERROR 403: access_denied - Application is in testing mode');
+        console.error('❌ This means:');
+        console.error('   1. OAuth consent screen is set to "Testing" mode');
+        console.error('   2. User email is not in the list of test users');
+        console.error('   3. Solution: Add user email to test users in Google Cloud Console');
+        console.error('      OR publish the OAuth consent screen (requires Google verification)');
+      }
+      
       return res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?error=oauth_denied&message=${encodeURIComponent(error)}`);
     }
     

@@ -107,37 +107,121 @@ export default function HealthAppSync() {
       const app = apps.find(a => a.id === appId);
       
       if (appId === "google_fit") {
-        // Build OAuth URL for Google Fit
-        const clientId = process.env.REACT_APP_GOOGLE_FIT_CLIENT_ID || '57242427608-a0c5s1923op8ndn56a018mphciqp5ksu.apps.googleusercontent.com';
-        const backendUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'https://ezhealth-l6zx.onrender.com';
-        const redirectUri = `${backendUrl}/api/auth/google-fit/callback`;
-        const scope = 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read https://www.googleapis.com/auth/fitness.sleep.read';
-        const state = user?.id || ''; // Pass userId in state
+        // Initialize OAuth - get state token from backend
+        try {
+          const initResponse = await api.post("/auth/google-fit/init", {
+            userId: user?.id
+          });
+          
+          const stateToken = initResponse.data.stateToken;
+          
+          if (!stateToken) {
+            throw new Error('Failed to get OAuth state token');
+          }
+          
+          // Build OAuth URL for Google Fit
+          const clientId = process.env.REACT_APP_GOOGLE_FIT_CLIENT_ID || '57242427608-a0c5s1923op8ndn56a018mphciqp5ksu.apps.googleusercontent.com';
+          const backendUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'https://ezhealth-l6zx.onrender.com';
+          const redirectUri = `${backendUrl}/api/auth/google-fit/callback`;
+          const scope = 'https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read https://www.googleapis.com/auth/fitness.sleep.read';
+          
+          const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(stateToken)}&access_type=offline&prompt=consent`;
         
-        const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}&access_type=offline&prompt=consent`;
-        
-        console.log(`🔐 Opening Google OAuth in external browser:`);
-        console.log(`🔐 Client ID: ${clientId}`);
-        console.log(`🔐 Redirect URI: ${redirectUri}`);
-        console.log(`🔐 State (userId): ${state}`);
-        console.log(`🔐 Full OAuth URL: ${oauthUrl}`);
-        console.log(`🔐 Make sure this redirect URI is added to Google Cloud Console: ${redirectUri}`);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'HealthAppSync.jsx:handleConnectConfirm',
+              message: 'Opening Google OAuth URL with state token',
+              data: {
+                clientId: clientId.substring(0, 20) + '...',
+                redirectUri,
+                stateToken: stateToken.substring(0, 8) + '...',
+                userId: user?.id,
+                hasTelegramWebApp: !!window.Telegram?.WebApp,
+                hasOpenLink: !!window.Telegram?.WebApp?.openLink
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'H1'
+            })
+          }).catch(() => {});
+          // #endregion
+          
+          console.log(`🔐 Opening Google OAuth in external browser:`);
+          console.log(`🔐 Client ID: ${clientId}`);
+          console.log(`🔐 Redirect URI: ${redirectUri}`);
+          console.log(`🔐 State Token: ${stateToken.substring(0, 8)}...`);
+          console.log(`🔐 User ID: ${user?.id}`);
+          console.log(`🔐 Full OAuth URL: ${oauthUrl}`);
+          console.log(`🔐 Make sure this redirect URI is added to Google Cloud Console: ${redirectUri}`);
         
         // Open OAuth URL in external browser (required by Google for security)
         // Google blocks OAuth requests from embedded WebViews (disallowed_useragent error)
         if (window.Telegram?.WebApp?.openLink) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'HealthAppSync.jsx:handleConnectConfirm',
+              message: 'Using Telegram WebApp.openLink',
+              data: { method: 'openLink' },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'H1'
+            })
+          }).catch(() => {});
+          // #endregion
           // Use Telegram WebApp API to open in external browser
           window.Telegram.WebApp.openLink(oauthUrl);
         } else if (window.Telegram?.WebApp?.openTelegramLink) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'HealthAppSync.jsx:handleConnectConfirm',
+              message: 'Using Telegram WebApp.openTelegramLink fallback',
+              data: { method: 'openTelegramLink' },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'H1'
+            })
+          }).catch(() => {});
+          // #endregion
           // Fallback for older Telegram WebApp versions
           window.Telegram.WebApp.openTelegramLink(oauthUrl);
         } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'HealthAppSync.jsx:handleConnectConfirm',
+              message: 'Using window.open fallback',
+              data: { method: 'window.open' },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'H1'
+            })
+          }).catch(() => {});
+          // #endregion
           // Fallback: try to open in new window/tab
-          const newWindow = window.open(oauthUrl, '_blank', 'noopener,noreferrer');
-          if (!newWindow) {
-            // If popup blocked, show instructions
-            alert('Please allow popups and try again, or copy this URL and open it in your browser:\n\n' + oauthUrl);
+            const newWindow = window.open(oauthUrl, '_blank', 'noopener,noreferrer');
+            if (!newWindow) {
+              // If popup blocked, show instructions
+              alert('Please allow popups and try again, or copy this URL and open it in your browser:\n\n' + oauthUrl);
+            }
           }
+        } catch (error) {
+          console.error('Error initializing Google Fit OAuth:', error);
+          alert(t("common.error") || "Error" + ": " + (error.message || 'Failed to initialize Google Fit connection. Please try again.'));
         }
       } else if (appId === "mi_fit" || appId === "apple_health") {
         // For other apps, use test token flow for now

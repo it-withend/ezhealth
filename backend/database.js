@@ -265,7 +265,17 @@ export function initDatabase() {
 
                         // Health app sync table
                         database.run(`
-                          CREATE TABLE IF NOT EXISTS health_app_sync (
+                          CREATE TABLE IF NOT EXISTS oauth_states (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          state_token TEXT UNIQUE NOT NULL,
+                          user_id INTEGER NOT NULL,
+                          app_name TEXT NOT NULL,
+                          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                          expires_at DATETIME NOT NULL,
+                          FOREIGN KEY (user_id) REFERENCES users(id)
+                        );
+                        
+                        CREATE TABLE IF NOT EXISTS health_app_sync (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id INTEGER NOT NULL,
                             app_name TEXT NOT NULL,
