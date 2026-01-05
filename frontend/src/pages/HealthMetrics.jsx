@@ -128,13 +128,51 @@ export default function HealthMetrics() {
     }
   }, [user, loading]);
 
+  // Log metrics state changes to track if setMetrics actually updates the state
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect[metrics]',
+        message: 'METRICS STATE CHANGED',
+        data: { 
+          metrics: metrics.map(m => ({ id: m.id, name: m.name, current: m.current, currentType: typeof m.current }))
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H4'
+      })
+    }).catch(() => {});
+    // #endregion
+  }, [metrics]);
+
   const loadMetrics = async () => {
     if (!user || !user.id) {
       console.warn("⚠️ Cannot load metrics: user or user.id is missing", { user });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadMetrics',
+          message: 'loadMetrics ABORTED - no user',
+          data: { user: user, hasUserId: !!user?.id },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
       return;
     }
     
-    console.log(`📊 Loading metrics for user ID: ${user.id}`);
+    const frontendUserId = user.id;
+    const userIdType = typeof frontendUserId;
+    console.log(`📊 Loading metrics for user ID: ${frontendUserId} (type: ${userIdType})`);
     
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
@@ -142,12 +180,17 @@ export default function HealthMetrics() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         location: 'HealthMetrics.jsx:loadMetrics',
-        message: 'loadMetrics called',
-        data: { userId: user?.id },
+        message: 'loadMetrics ENTRY',
+        data: { 
+          userId: frontendUserId, 
+          userIdType: userIdType,
+          userIdString: String(frontendUserId),
+          userIdNumber: Number(frontendUserId)
+        },
         timestamp: Date.now(),
         sessionId: 'debug-session',
         runId: 'run1',
-        hypothesisId: 'C'
+        hypothesisId: 'H1'
       })
     }).catch(() => {});
     // #endregion
@@ -161,24 +204,41 @@ export default function HealthMetrics() {
       
       console.log(`📊 API Response status: ${response.status}`, response.data);
       
+      const allMetrics = response.data.metrics || [];
+      const responseUserId = response.data.userId;
+      const responseUserIdType = typeof responseUserId;
+      
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           location: 'HealthMetrics.jsx:loadMetrics',
-          message: 'loadMetrics response',
-          data: { metricsCount: response.data?.metrics?.length || 0, success: response.data?.success },
+          message: 'loadMetrics API RESPONSE',
+          data: { 
+            frontendUserId: frontendUserId,
+            frontendUserIdType: userIdType,
+            responseUserId: responseUserId,
+            responseUserIdType: responseUserIdType,
+            userIdsMatch: String(frontendUserId) === String(responseUserId),
+            metricsCount: allMetrics.length,
+            sampleMetrics: allMetrics.slice(0, 5).map(m => ({ 
+              id: m.id, 
+              type: m.type, 
+              value: m.value, 
+              user_id: m.user_id,
+              user_id_type: typeof m.user_id,
+              recorded_at: m.recorded_at 
+            }))
+          },
           timestamp: Date.now(),
           sessionId: 'debug-session',
           runId: 'run1',
-          hypothesisId: 'C'
+          hypothesisId: 'H1'
         })
       }).catch(() => {});
       // #endregion
       
-      const allMetrics = response.data.metrics || [];
-      const responseUserId = response.data.userId;
       console.log("📊 API Response:", {
         userId: responseUserId,
         currentUser: user?.id,
@@ -186,8 +246,31 @@ export default function HealthMetrics() {
         sampleMetrics: allMetrics.slice(0, 3).map(m => ({ id: m.id, type: m.type, value: m.value, user_id: m.user_id }))
       });
       
-      if (responseUserId && user?.id && responseUserId !== user.id) {
+      if (responseUserId && user?.id && String(responseUserId) !== String(user.id)) {
         console.warn(`⚠️ User ID mismatch! API returned userId=${responseUserId}, but current user.id=${user.id}`);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:loadMetrics',
+            message: 'USER ID MISMATCH DETECTED',
+            data: { 
+              frontendUserId: frontendUserId,
+              responseUserId: responseUserId,
+              comparison: {
+                strict: frontendUserId === responseUserId,
+                string: String(frontendUserId) === String(responseUserId),
+                number: Number(frontendUserId) === Number(responseUserId)
+              }
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'H1'
+          })
+        }).catch(() => {});
+        // #endregion
       }
       
       // Get latest values for each metric type
@@ -203,6 +286,31 @@ export default function HealthMetrics() {
         }
       });
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadMetrics',
+          message: 'BEFORE setMetrics - latestValues computed',
+          data: { 
+            latestValuesKeys: Object.keys(latestValues),
+            latestValuesDetails: Object.keys(latestValues).map(type => ({
+              type,
+              value: latestValues[type].value,
+              valueType: typeof latestValues[type].value,
+              recorded_at: latestValues[type].recorded_at,
+              user_id: latestValues[type].user_id
+            }))
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H2'
+        })
+      }).catch(() => {});
+      // #endregion
+
       console.log("Latest values by type:", latestValues);
       console.log("Latest values details:", Object.keys(latestValues).map(type => ({
         type,
@@ -212,6 +320,25 @@ export default function HealthMetrics() {
 
       // Update metrics with latest values
       setMetrics(prev => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:setMetrics',
+            message: 'setMetrics ENTRY - prev state',
+            data: { 
+              prevMetrics: prev.map(m => ({ id: m.id, name: m.name, current: m.current })),
+              latestValuesKeys: Object.keys(latestValues)
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'H2'
+          })
+        }).catch(() => {});
+        // #endregion
+
         const updated = prev.map(m => {
           // Map metric IDs to API types
           const typeMap = {
@@ -224,6 +351,29 @@ export default function HealthMetrics() {
           
           const apiType = typeMap[m.id];
           const latest = latestValues[apiType];
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'HealthMetrics.jsx:setMetrics',
+              message: `Processing metric ${m.id}`,
+              data: { 
+                metricId: m.id,
+                apiType: apiType,
+                hasLatest: !!latest,
+                latestValue: latest?.value,
+                latestValueType: typeof latest?.value,
+                latestRecordedAt: latest?.recorded_at
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'H2'
+            })
+          }).catch(() => {});
+          // #endregion
           
           if (latest && latest.value !== null && latest.value !== undefined) {
             let current = latest.value;
@@ -261,10 +411,47 @@ export default function HealthMetrics() {
           return { ...m, current: defaultValue };
         });
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:setMetrics',
+            message: 'setMetrics EXIT - returning updated state',
+            data: { 
+              updatedMetrics: updated.map(m => ({ id: m.id, name: m.name, current: m.current, currentType: typeof m.current }))
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'H2'
+          })
+        }).catch(() => {});
+        // #endregion
+        
         console.log("Final updated metrics:", updated.map(m => ({ id: m.id, name: m.name, current: m.current })));
         return updated;
       });
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:loadMetrics',
+          message: 'loadMetrics ERROR',
+          data: { 
+            error: error.message,
+            errorStatus: error.response?.status,
+            errorData: error.response?.data
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
         method: 'POST',
@@ -352,6 +539,27 @@ export default function HealthMetrics() {
     e.preventDefault();
     if (!formData.value) return;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:handleAddMetric',
+        message: 'handleAddMetric ENTRY',
+        data: { 
+          userId: user?.id,
+          userIdType: typeof user?.id,
+          formData: formData,
+          currentMetrics: metrics.map(m => ({ id: m.id, current: m.current }))
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H3'
+      })
+    }).catch(() => {});
+    // #endregion
+
     try {
       console.log("Adding metric:", formData);
       const response = await api.post("/health/metrics", {
@@ -360,6 +568,26 @@ export default function HealthMetrics() {
         unit: formData.unit || getDefaultUnit(formData.type),
         notes: formData.notes
       });
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:handleAddMetric',
+          message: 'Metric ADDED - before reload',
+          data: { 
+            response: response.data,
+            addedType: formData.type,
+            addedValue: formData.value
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H3'
+        })
+      }).catch(() => {});
+      // #endregion
       
       console.log("Metric added successfully:", response.data);
       
@@ -372,8 +600,47 @@ export default function HealthMetrics() {
         await loadMetrics();
         await loadChartData();
         console.log("Metrics reloaded successfully");
+        
+        // Force a state check after a brief delay to see if metrics updated
+        setTimeout(() => {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'HealthMetrics.jsx:handleAddMetric',
+              message: 'Metrics state CHECK after reload (500ms delay)',
+              data: { 
+                metricsAfterDelay: metrics.map(m => ({ id: m.id, current: m.current }))
+              },
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'H3'
+            })
+          }).catch(() => {});
+          // #endregion
+        }, 500);
       } catch (reloadError) {
         console.error("Error reloading metrics:", reloadError);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:handleAddMetric',
+            message: 'Reload ERROR',
+            data: { 
+              error: reloadError.message,
+              errorResponse: reloadError.response?.data
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'H3'
+          })
+        }).catch(() => {});
+        // #endregion
         // Retry after delay
         setTimeout(async () => {
           console.log("Retrying metrics reload...");

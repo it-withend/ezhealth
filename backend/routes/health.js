@@ -36,7 +36,10 @@ router.get("/summary", (req, res) => {
 router.get("/metrics", authenticate, async (req, res) => {
   try {
     const userId = req.userId;
+    const userIdType = typeof userId;
     const { type, limit = 100, days = 30 } = req.query;
+
+    console.log(`📊 GET /health/metrics - userId=${userId} (type: ${userIdType}), type=${type}, limit=${limit}, days=${days}`);
 
     let sql = `
       SELECT * FROM health_metrics 
@@ -57,6 +60,8 @@ router.get("/metrics", authenticate, async (req, res) => {
     sql += ' ORDER BY recorded_at DESC LIMIT ?';
     params.push(parseInt(limit));
 
+    console.log(`📊 Executing SQL: ${sql} with params:`, params);
+
     const metrics = await dbAll(sql, params);
 
     console.log(`📊 Returning ${metrics.length} metrics for user ${userId}`);
@@ -66,8 +71,16 @@ router.get("/metrics", authenticate, async (req, res) => {
         type: m.type, 
         value: m.value, 
         user_id: m.user_id,
+        user_id_type: typeof m.user_id,
         recorded_at: m.recorded_at 
       })));
+      
+      // Check if user_id matches
+      const userIdsMatch = metrics.every(m => String(m.user_id) === String(userId));
+      if (!userIdsMatch) {
+        console.warn(`⚠️ Some metrics have different user_id! Expected: ${userId}, Found:`, 
+          [...new Set(metrics.map(m => m.user_id))]);
+      }
     } else {
       console.log(`⚠️ No metrics found for user ${userId}`);
     }
@@ -75,7 +88,8 @@ router.get("/metrics", authenticate, async (req, res) => {
     res.json({
       success: true,
       metrics,
-      userId: userId // Include userId in response for debugging
+      userId: userId,
+      userIdType: userIdType // Include userId in response for debugging
     });
   } catch (error) {
     console.error('Get metrics error:', error);
