@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, { useState, useEffect, useContext, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -12,6 +12,39 @@ import HealthAppSync from "../components/HealthAppSync";
 import "../styles/HealthMetrics.css";
 
 export default function HealthMetrics() {
+  // #region agent log
+  React.useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:component',
+        message: 'COMPONENT MOUNTED',
+        data: { componentName: 'HealthMetrics.jsx (page)' },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H4'
+      })
+    }).catch(() => {});
+    return () => {
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:component',
+          message: 'COMPONENT UNMOUNTED',
+          data: { componentName: 'HealthMetrics.jsx (page)' },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H4'
+        })
+      }).catch(() => {});
+    };
+  }, []);
+  // #endregion
+
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const { t } = useLanguage();
@@ -94,8 +127,32 @@ export default function HealthMetrics() {
     })));
   }, [t]);
 
+  // Track selectedMetric changes
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect[selectedMetric-track]',
+        message: 'selectedMetric STATE CHANGED',
+        data: { 
+          selectedMetric: selectedMetric,
+          stackTrace: new Error().stack?.split('\n').slice(0, 8).join(' | ')
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H1'
+      })
+    }).catch(() => {});
+    // #endregion
+  }, [selectedMetric]);
+
   // Define loadMetrics before useEffect that uses it
   const loadMetrics = async () => {
+    loadMetricsCallCountRef.current++;
+    const callNumber = loadMetricsCallCountRef.current;
     // Backend uses middleware to get user_id from initData, so we don't need user.id
     // But we still log if user is available for debugging
     const frontendUserId = user?.id;
@@ -110,9 +167,14 @@ export default function HealthMetrics() {
         location: 'HealthMetrics.jsx:loadMetrics',
         message: 'loadMetrics ENTRY',
         data: { 
+          callNumber: callNumber,
+          totalCalls: loadMetricsCallCountRef.current,
           hasUser: !!user,
           userId: frontendUserId, 
           userIdType: userIdType,
+          selectedMetric: selectedMetric,
+          loading: loading,
+          stackTrace: new Error().stack?.split('\n').slice(0, 8).join(' | '),
           note: 'Backend will use initData from headers to get user_id'
         },
         timestamp: Date.now(),
@@ -361,6 +423,8 @@ export default function HealthMetrics() {
 
   // Define loadChartData before useEffect that uses it
   const loadChartData = async () => {
+    loadChartDataCallCountRef.current++;
+    const callNumber = loadChartDataCallCountRef.current;
     // Backend uses middleware to get user_id from initData, so we don't need user check
     if (!selectedMetric) return; // Don't load if no metric selected
     
@@ -372,8 +436,11 @@ export default function HealthMetrics() {
         location: 'HealthMetrics.jsx:loadChartData',
         message: 'loadChartData ENTRY',
         data: { 
+          callNumber: callNumber,
+          totalCalls: loadChartDataCallCountRef.current,
           selectedMetric: selectedMetric,
-          hasUser: !!user
+          hasUser: !!user,
+          stackTrace: new Error().stack?.split('\n').slice(0, 8).join(' | ')
         },
         timestamp: Date.now(),
         sessionId: 'debug-session',
@@ -503,29 +570,80 @@ export default function HealthMetrics() {
 
   // Track initial load to prevent infinite loops
   const initialLoadRef = useRef(false);
+  const loadMetricsCallCountRef = useRef(0);
+  const loadChartDataCallCountRef = useRef(0);
   
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect[selectedMetric]',
+        message: 'useEffect[selectedMetric] TRIGGERED',
+        data: { 
+          selectedMetric: selectedMetric,
+          initialLoadRefCurrent: initialLoadRef.current,
+          hasUser: !!user,
+          userId: user?.id,
+          loadMetricsCallCount: loadMetricsCallCountRef.current,
+          loadChartDataCallCount: loadChartDataCallCountRef.current,
+          stackTrace: new Error().stack?.split('\n').slice(0, 5).join(' | ')
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H1'
+      })
+    }).catch(() => {});
+    // #endregion
+
     // Only load metrics once on mount
     if (initialLoadRef.current) {
       // Only reload chart when metric selection changes
+      loadChartDataCallCountRef.current++;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:useEffect[selectedMetric]',
+          message: 'CALLING loadChartData (selectedMetric changed)',
+          data: { 
+            selectedMetric: selectedMetric,
+            callCount: loadChartDataCallCountRef.current
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H1'
+        })
+      }).catch(() => {});
+      // #endregion
       loadChartData();
       return;
     }
     
     initialLoadRef.current = true;
+    loadMetricsCallCountRef.current++;
+    loadChartDataCallCountRef.current++;
     
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        location: 'HealthMetrics.jsx:useEffect',
-        message: 'useEffect triggered - INITIAL LOAD',
-        data: { hasUser: !!user, userId: user?.id, selectedMetric },
+        location: 'HealthMetrics.jsx:useEffect[selectedMetric]',
+        message: 'INITIAL LOAD - calling loadMetrics and loadChartData',
+        data: { 
+          selectedMetric: selectedMetric,
+          loadMetricsCallCount: loadMetricsCallCountRef.current,
+          loadChartDataCallCount: loadChartDataCallCountRef.current
+        },
         timestamp: Date.now(),
         sessionId: 'debug-session',
         runId: 'run1',
-        hypothesisId: 'C'
+        hypothesisId: 'H1'
       })
     }).catch(() => {});
     // #endregion
@@ -547,13 +665,86 @@ export default function HealthMetrics() {
   // Force reload metrics after a short delay when component is visible (only once)
   const autoReloadDoneRef = useRef(false);
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        location: 'HealthMetrics.jsx:useEffect[loading]',
+        message: 'useEffect[loading] TRIGGERED',
+        data: { 
+          loading: loading,
+          autoReloadDoneRefCurrent: autoReloadDoneRef.current,
+          loadMetricsCallCount: loadMetricsCallCountRef.current
+        },
+        timestamp: Date.now(),
+        sessionId: 'debug-session',
+        runId: 'run1',
+        hypothesisId: 'H2'
+      })
+    }).catch(() => {});
+    // #endregion
+
     if (!loading && !autoReloadDoneRef.current) {
       autoReloadDoneRef.current = true;
+      loadMetricsCallCountRef.current++;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'HealthMetrics.jsx:useEffect[loading]',
+          message: 'SCHEDULING auto-reload loadMetrics (1s delay)',
+          data: { 
+            loading: loading,
+            callCount: loadMetricsCallCountRef.current
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H2'
+        })
+      }).catch(() => {});
+      // #endregion
       const timer = setTimeout(() => {
         console.log("Auto-reloading metrics (one time)...");
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:useEffect[loading]',
+            message: 'EXECUTING auto-reload loadMetrics',
+            data: { 
+              callCount: loadMetricsCallCountRef.current
+            },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'H2'
+          })
+        }).catch(() => {});
+        // #endregion
         loadMetrics();
       }, 1000);
-      return () => clearTimeout(timer);
+      return () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location: 'HealthMetrics.jsx:useEffect[loading]',
+            message: 'CLEANUP - clearing auto-reload timer',
+            data: {},
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'H2'
+          })
+        }).catch(() => {});
+        // #endregion
+        clearTimeout(timer);
+      };
     }
   }, [loading]);
 
@@ -567,12 +758,15 @@ export default function HealthMetrics() {
         location: 'HealthMetrics.jsx:useEffect[metrics]',
         message: 'METRICS STATE CHANGED',
         data: { 
-          metrics: metrics.map(m => ({ id: m.id, name: m.name, current: m.current, currentType: typeof m.current }))
+          metrics: metrics.map(m => ({ id: m.id, name: m.name, current: m.current, currentType: typeof m.current })),
+          metricsLength: metrics.length,
+          selectedMetric: selectedMetric,
+          loading: loading
         },
         timestamp: Date.now(),
         sessionId: 'debug-session',
         runId: 'run1',
-        hypothesisId: 'H4'
+        hypothesisId: 'H3'
       })
     }).catch(() => {});
     // #endregion
@@ -752,7 +946,27 @@ export default function HealthMetrics() {
           <Card
             key={metric.id}
             className={`stat-card ${selectedMetric === metric.id ? "active" : ""}`}
-            onClick={() => setSelectedMetric(metric.id)}
+            onClick={() => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  location: 'HealthMetrics.jsx:onClick',
+                  message: 'USER CLICKED metric card',
+                  data: { 
+                    clickedMetricId: metric.id,
+                    currentSelectedMetric: selectedMetric
+                  },
+                  timestamp: Date.now(),
+                  sessionId: 'debug-session',
+                  runId: 'run1',
+                  hypothesisId: 'H1'
+                })
+              }).catch(() => {});
+              // #endregion
+              setSelectedMetric(metric.id);
+            }}
           >
             <div className="stat-icon">{metric.icon}</div>
             <div className="stat-value">{metric.current} {metric.unit}</div>
