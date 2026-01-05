@@ -345,6 +345,7 @@ export function initDatabase() {
                               });
                             });
                           });
+                        });
                       });
                     });
                   });
@@ -354,6 +355,7 @@ export function initDatabase() {
           });
         });
       });
+    });
     });
   });
 }
