@@ -130,7 +130,8 @@ export const translations = {
       notSynced: "Not synced yet",
       appConnected: "App connected successfully",
       appDisconnected: "App disconnected",
-      syncSuccess: "Data synced successfully"
+      syncSuccess: "Data synced successfully",
+      authorize: "Authorize"
     },
     // Documents
     documents: {
@@ -524,7 +525,8 @@ export const translations = {
       notSynced: "Hali sinxronlanmagan",
       appConnected: "Ilova muvaffaqiyatli ulandi",
       appDisconnected: "Ilova uzildi",
-      syncSuccess: "Ma'lumotlar muvaffaqiyatli sinxronlandi"
+      syncSuccess: "Ma'lumotlar muvaffaqiyatli sinxronlandi",
+      authorize: "Ruxsat berish"
     },
     // Documents
     documents: {

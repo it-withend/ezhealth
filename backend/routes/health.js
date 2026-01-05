@@ -60,10 +60,22 @@ router.get("/metrics", authenticate, async (req, res) => {
     const metrics = await dbAll(sql, params);
 
     console.log(`📊 Returning ${metrics.length} metrics for user ${userId}`);
+    if (metrics.length > 0) {
+      console.log(`📊 Sample metrics:`, metrics.slice(0, 3).map(m => ({ 
+        id: m.id, 
+        type: m.type, 
+        value: m.value, 
+        user_id: m.user_id,
+        recorded_at: m.recorded_at 
+      })));
+    } else {
+      console.log(`⚠️ No metrics found for user ${userId}`);
+    }
 
     res.json({
       success: true,
-      metrics
+      metrics,
+      userId: userId // Include userId in response for debugging
     });
   } catch (error) {
     console.error('Get metrics error:', error);
@@ -83,12 +95,29 @@ router.post("/metrics", authenticate, async (req, res) => {
       return res.status(400).json({ error: 'type and value are required' });
     }
 
+    if (!userId) {
+      console.error('❌ No userId found in request');
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
     const result = await dbRun(
       'INSERT INTO health_metrics (user_id, type, value, unit, notes, source) VALUES (?, ?, ?, ?, ?, ?)',
       [userId, type, value, unit || null, notes || null, 'manual']
     );
     
-    console.log(`✅ Health metric added: ID=${result.lastID}`);
+    console.log(`✅ Health metric added: ID=${result.lastID}, userId=${userId}, type=${type}, value=${value}`);
+    
+    // Verify the metric was saved correctly
+    const savedMetric = await dbGet(
+      'SELECT * FROM health_metrics WHERE id = ? AND user_id = ?',
+      [result.lastID, userId]
+    );
+    
+    if (!savedMetric) {
+      console.error(`❌ Failed to verify saved metric: ID=${result.lastID}, userId=${userId}`);
+    } else {
+      console.log(`✅ Verified saved metric:`, { id: savedMetric.id, user_id: savedMetric.user_id, type: savedMetric.type, value: savedMetric.value });
+    }
 
     // Check for critical values and trigger alerts
     try {

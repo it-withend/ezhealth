@@ -10,6 +10,8 @@ export default function HealthAppSync() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState({});
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [selectedApp, setSelectedApp] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -29,27 +31,48 @@ export default function HealthAppSync() {
     } catch (error) {
       console.error("Error loading health apps:", error);
       console.error("Error details:", error.response?.data);
-      setApps([]); // Set empty array on error
+      setApps([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConnect = async (appId) => {
+  const handleConnectClick = (app) => {
+    setSelectedApp(app);
+    setShowConnectModal(true);
+  };
+
+  const handleConnectConfirm = async () => {
+    if (!selectedApp) return;
+    
     try {
-      // Show instructions for connecting
+      const appId = selectedApp.id;
       const app = apps.find(a => a.id === appId);
+      
+      // Show OAuth instructions
+      let oauthUrl = "";
       let instructions = "";
       
       if (appId === "google_fit") {
         instructions = `To connect Google Fit:
-1. Go to Google Cloud Console (https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable Google Fit API
-4. Create OAuth 2.0 credentials
-5. Copy the access token and paste it here
+1. Click "Authorize" below to open Google OAuth
+2. Sign in with your Google account
+3. Grant permissions to access Google Fit data
+4. You will be redirected back to the app`;
+        
+        // In production, this would be the actual OAuth URL
+        oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/google-fit/callback')}&response_type=code&scope=https://www.googleapis.com/auth/fitness.activity.read https://www.googleapis.com/auth/fitness.body.read https://www.googleapis.com/auth/fitness.heart_rate.read`;
+      } else if (appId === "mi_fit") {
+        instructions = `To connect Mi Fit (Xiaomi Health):
+1. Click "Authorize" below to open Xiaomi OAuth
+2. Sign in with your Xiaomi account
+3. Grant permissions to access health data
+4. You will be redirected back to the app
 
-For now, you can use a test token (will be implemented in production)`;
+API Reference: https://dev.mi.com/docs/passport/en/open-api/`;
+        
+        // In production, this would be the actual OAuth URL
+        oauthUrl = `https://open.account.xiaomi.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/mi-fit/callback')}&response_type=code&scope=1+3`;
       } else if (appId === "apple_health") {
         instructions = `To connect Apple Health:
 1. Open Settings > Privacy & Security > Health
@@ -57,38 +80,37 @@ For now, you can use a test token (will be implemented in production)`;
 3. Grant permissions to this app
 4. The app will automatically sync data
 
-Note: Full integration requires iOS app development`;
-      } else if (appId === "mi_fit") {
-        instructions = `To connect Mi Fit (Xiaomi Health):
-1. Register at Xiaomi Developer Platform: https://dev.mi.com/
-2. Create an app and get Client ID
-3. Use OAuth 2.0 Authorization Code flow
-4. Request scopes: 1 (profile), 3 (openid)
-5. Get access token from: https://open.account.xiaomi.com/oauth2/authorize
-
-API Reference: https://dev.mi.com/docs/passport/en/open-api/
-
-Note: Requires Xiaomi developer account and API credentials`;
+Note: Full integration requires iOS app with HealthKit framework`;
+        oauthUrl = null; // Apple Health uses HealthKit, not OAuth
       } else {
         instructions = `To connect ${app?.name}:
-Please refer to the app's documentation for OAuth setup instructions.`;
+Please refer to the app's official documentation for OAuth setup instructions.`;
+        oauthUrl = null;
       }
 
-      const useToken = window.confirm(instructions + "\n\nUse test token for now?");
+      // For now, use test token (in production, redirect to OAuth)
+      const useTestToken = window.confirm(instructions + "\n\nFor testing: Use test token? (In production, this would redirect to OAuth)");
       
-      if (useToken) {
+      if (useTestToken) {
         const mockToken = `mock_token_${appId}_${Date.now()}`;
         
+        console.log(`Connecting ${appId} with test token...`);
         await api.post("/health/sync/connect", {
           appName: appId,
           accessToken: mockToken
         });
         
         alert(t("health.appConnected") || `${app?.name} connected successfully!`);
-        loadApps();
+        setShowConnectModal(false);
+        setSelectedApp(null);
+        await loadApps();
+      } else if (oauthUrl) {
+        // In production, redirect to OAuth URL
+        window.location.href = oauthUrl;
       }
     } catch (error) {
       console.error("Error connecting app:", error);
+      console.error("Error details:", error.response?.data);
       alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
     }
   };
@@ -101,7 +123,7 @@ Please refer to the app's documentation for OAuth setup instructions.`;
     try {
       await api.post("/health/sync/disconnect", { appName: appId });
       alert(t("health.appDisconnected") || `${apps.find(a => a.id === appId)?.name} disconnected`);
-      loadApps();
+      await loadApps();
     } catch (error) {
       console.error("Error disconnecting app:", error);
       alert(t("common.error") + ": " + (error.response?.data?.error || error.message));
@@ -139,73 +161,182 @@ Please refer to the app's documentation for OAuth setup instructions.`;
   };
 
   if (loading) {
-    return <div>{t("common.loading") || "Loading..."}</div>;
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <div>{t("common.loading") || "Loading health apps..."}</div>
+      </div>
+    );
+  }
+
+  if (apps.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+        <p>No health apps available</p>
+        <button 
+          onClick={loadApps}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '6px',
+            border: 'none',
+            background: '#2D9B8C',
+            color: 'white',
+            cursor: 'pointer',
+            marginTop: '10px'
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
-      {apps.map(app => (
-        <Card key={app.id} style={{ padding: '15px', textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', marginBottom: '10px' }}>{app.icon}</div>
-          <h4 style={{ margin: '10px 0' }}>{app.name}</h4>
-          {app.connected ? (
-            <div>
-              <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
-                {app.lastSync 
-                  ? `${t("health.lastSync") || "Last sync"}: ${new Date(app.lastSync).toLocaleDateString()}`
-                  : t("health.notSynced") || "Not synced yet"}
-              </p>
-              <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                <button
-                  onClick={() => handleSync(app.id)}
-                  disabled={syncing[app.id]}
-                  style={{
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: syncing[app.id] ? '#ccc' : '#2D9B8C',
-                    color: 'white',
-                    cursor: syncing[app.id] ? 'not-allowed' : 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  {syncing[app.id] ? t("common.syncing") || "Syncing..." : t("health.syncNow") || "Sync Now"}
-                </button>
-                <button
-                  onClick={() => handleDisconnect(app.id)}
-                  style={{
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid #e74c3c',
-                    background: 'white',
-                    color: '#e74c3c',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  {t("health.disconnect") || "Disconnect"}
-                </button>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+        {apps.map(app => (
+          <Card key={app.id} style={{ padding: '15px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '10px' }}>{app.icon}</div>
+            <h4 style={{ margin: '10px 0' }}>{app.name}</h4>
+            {app.connected ? (
+              <div>
+                <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+                  {app.lastSync 
+                    ? `${t("health.lastSync") || "Last sync"}: ${new Date(app.lastSync).toLocaleDateString()}`
+                    : t("health.notSynced") || "Not synced yet"}
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                  <button
+                    onClick={() => handleSync(app.id)}
+                    disabled={syncing[app.id]}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: syncing[app.id] ? '#ccc' : '#2D9B8C',
+                      color: 'white',
+                      cursor: syncing[app.id] ? 'not-allowed' : 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {syncing[app.id] ? t("common.syncing") || "Syncing..." : t("health.syncNow") || "Sync Now"}
+                  </button>
+                  <button
+                    onClick={() => handleDisconnect(app.id)}
+                    style={{
+                      padding: '8px',
+                      borderRadius: '6px',
+                      border: '1px solid #e74c3c',
+                      background: 'white',
+                      color: '#e74c3c',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    {t("health.disconnect") || "Disconnect"}
+                  </button>
+                </div>
               </div>
+            ) : (
+              <button
+                onClick={() => handleConnectClick(app)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#2D9B8C',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  width: '100%'
+                }}
+              >
+                {t("health.connect") || "Connect"}
+              </button>
+            )}
+          </Card>
+        ))}
+      </div>
+
+      {/* Connect Modal */}
+      {showConnectModal && selectedApp && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <Card style={{
+            padding: '20px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <h3 style={{ marginTop: 0 }}>Connect {selectedApp.name}</h3>
+            <p style={{ whiteSpace: 'pre-line', marginBottom: '20px' }}>
+              {selectedApp.id === "google_fit" && `To connect Google Fit:
+1. Click "Authorize" below to open Google OAuth
+2. Sign in with your Google account
+3. Grant permissions to access Google Fit data
+4. You will be redirected back to the app
+
+API Reference: https://developers.google.com/fit/rest/v1/reference`}
+              {selectedApp.id === "mi_fit" && `To connect Mi Fit (Xiaomi Health):
+1. Click "Authorize" below to open Xiaomi OAuth
+2. Sign in with your Xiaomi account
+3. Grant permissions to access health data
+4. You will be redirected back to the app
+
+API Reference: https://dev.mi.com/docs/passport/en/open-api/`}
+              {selectedApp.id === "apple_health" && `To connect Apple Health:
+1. Open Settings > Privacy & Security > Health
+2. Enable HealthKit sharing
+3. Grant permissions to this app
+4. The app will automatically sync data
+
+Note: Full integration requires iOS app with HealthKit framework`}
+              {!["google_fit", "mi_fit", "apple_health"].includes(selectedApp.id) && `To connect ${selectedApp.name}:
+Please refer to the app's official documentation for OAuth setup instructions.`}
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowConnectModal(false);
+                  setSelectedApp(null);
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: '1px solid #ccc',
+                  background: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                {t("common.cancel") || "Cancel"}
+              </button>
+              <button
+                onClick={handleConnectConfirm}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#2D9B8C',
+                  color: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                {t("health.authorize") || "Authorize"}
+              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => handleConnect(app.id)}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                background: '#2D9B8C',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '14px',
-                width: '100%'
-              }}
-            >
-              {t("health.connect") || "Connect"}
-            </button>
-          )}
-        </Card>
-      ))}
-    </div>
+          </Card>
+        </div>
+      )}
+    </>
   );
 }

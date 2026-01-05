@@ -129,7 +129,13 @@ export default function HealthMetrics() {
   }, [user, loading]);
 
   const loadMetrics = async () => {
-    if (!user) return;
+    if (!user || !user.id) {
+      console.warn("⚠️ Cannot load metrics: user or user.id is missing", { user });
+      return;
+    }
+    
+    console.log(`📊 Loading metrics for user ID: ${user.id}`);
+    
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
       method: 'POST',
@@ -147,10 +153,13 @@ export default function HealthMetrics() {
     // #endregion
 
     try {
+      setLoading(true);
       // Load more metrics to get latest values for all types
       const response = await api.get("/health/metrics", {
         params: { limit: 100, days: 30 }
       });
+      
+      console.log(`📊 API Response status: ${response.status}`, response.data);
       
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
@@ -169,8 +178,17 @@ export default function HealthMetrics() {
       // #endregion
       
       const allMetrics = response.data.metrics || [];
-      console.log("Loaded metrics from API:", allMetrics);
-      console.log("Total metrics loaded:", allMetrics.length);
+      const responseUserId = response.data.userId;
+      console.log("📊 API Response:", {
+        userId: responseUserId,
+        currentUser: user?.id,
+        metricsCount: allMetrics.length,
+        sampleMetrics: allMetrics.slice(0, 3).map(m => ({ id: m.id, type: m.type, value: m.value, user_id: m.user_id }))
+      });
+      
+      if (responseUserId && user?.id && responseUserId !== user.id) {
+        console.warn(`⚠️ User ID mismatch! API returned userId=${responseUserId}, but current user.id=${user.id}`);
+      }
       
       // Get latest values for each metric type
       const latestValues = {};
@@ -263,6 +281,7 @@ export default function HealthMetrics() {
       }).catch(() => {});
       // #endregion
       console.error("Error loading metrics:", error);
+      console.error("Error details:", error.response?.data);
     } finally {
       setLoading(false);
     }
