@@ -404,95 +404,183 @@ export default function HealthAppSync() {
     );
   }
 
+  // Get app logo/icon
+  const getAppLogo = (appId, fallbackIcon) => {
+    if (appId === 'google_fit') {
+      // Google Fit logo - using SVG for reliability
+      return (
+        <div style={{ 
+          width: '40px', 
+          height: '40px', 
+          borderRadius: '8px',
+          background: 'linear-gradient(135deg, #4285F4 0%, #34A853 50%, #FBBC05 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          overflow: 'hidden'
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="white"/>
+          </svg>
+        </div>
+      );
+    } else if (appId === 'apple_health') {
+      return (
+        <div style={{ 
+          width: '40px', 
+          height: '40px', 
+          borderRadius: '8px',
+          background: 'linear-gradient(135deg, #FF3B30 0%, #FF9500 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          🍎
+        </div>
+      );
+    }
+    return (
+      <div style={{ 
+        width: '40px', 
+        height: '40px', 
+        borderRadius: '8px',
+        background: '#f0f0f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '24px'
+      }}>
+        {fallbackIcon}
+      </div>
+    );
+  };
+
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {apps.map(app => (
-          <Card key={app.id} style={{ padding: '15px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>{app.icon}</div>
-            <h4 style={{ margin: '10px 0' }}>{app.name}</h4>
-            {app.connected ? (
-              <div>
-                <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+          <Card 
+            key={app.id} 
+            onClick={() => {
+              if (app.connected) {
+                // If connected, sync on click
+                handleSync(app.id);
+              } else {
+                // If not connected, open connect modal
+                handleConnectClick(app);
+              }
+            }}
+            style={{ 
+              padding: '12px 16px', 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              border: app.connected ? '2px solid #479D90' : '2px solid transparent'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
+          >
+            {/* Logo */}
+            <div style={{ flexShrink: 0 }}>
+              {getAppLogo(app.id, app.icon)}
+            </div>
+            
+            {/* App Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1a1a1a' }}>
+                {app.name}
+              </h4>
+              {app.connected ? (
+                <p style={{ 
+                  margin: '4px 0 0 0', 
+                  fontSize: '12px', 
+                  color: '#666',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{ 
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#479D90'
+                  }}></span>
                   {app.lastSync 
                     ? `${t("health.lastSync") || "Last sync"}: ${new Date(app.lastSync).toLocaleDateString()}`
                     : t("health.notSynced") || "Not synced yet"}
                 </p>
-                <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+              ) : (
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#999' }}>
+                  {t("health.connect") || "Tap to connect"}
+                </p>
+              )}
+            </div>
+            
+            {/* Action Icon */}
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {app.connected ? (
+                <>
+                  {syncing[app.id] ? (
+                    <div style={{ 
+                      width: '20px', 
+                      height: '20px', 
+                      border: '2px solid #479D90',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                  ) : (
+                    <div style={{ 
+                      fontSize: '20px',
+                      color: '#479D90'
+                    }}>🔄</div>
+                  )}
                   <button
-                    onClick={() => {
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          location: 'HealthAppSync.jsx:onClick',
-                          message: 'SYNC BUTTON CLICKED',
-                          data: { 
-                            appId: app.id,
-                            appName: app.name,
-                            isConnected: app.connected,
-                            hasUser: !!user,
-                            userId: user?.id
-                          },
-                          timestamp: Date.now(),
-                          sessionId: 'debug-session',
-                          runId: 'run1',
-                          hypothesisId: 'H1'
-                        })
-                      }).catch(() => {});
-                      // #endregion
-                      handleSync(app.id);
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDisconnect(app.id);
                     }}
-                    disabled={syncing[app.id]}
                     style={{
-                      padding: '8px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: syncing[app.id] ? '#ccc' : '#2D9B8C',
-                      color: 'white',
-                      cursor: syncing[app.id] ? 'not-allowed' : 'pointer',
-                      fontSize: '14px'
-                    }}
-                  >
-                    {syncing[app.id] ? t("common.syncing") || "Syncing..." : t("health.syncNow") || "Sync Now"}
-                  </button>
-                  <button
-                    onClick={() => handleDisconnect(app.id)}
-                    style={{
-                      padding: '8px',
+                      padding: '4px 8px',
                       borderRadius: '6px',
                       border: '1px solid #e74c3c',
                       background: 'white',
                       color: '#e74c3c',
                       cursor: 'pointer',
-                      fontSize: '14px'
+                      fontSize: '11px',
+                      fontWeight: '500'
                     }}
                   >
-                    {t("health.disconnect") || "Disconnect"}
+                    ✕
                   </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => handleConnectClick(app)}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: '#2D9B8C',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  width: '100%'
-                }}
-              >
-                {t("health.connect") || "Connect"}
-              </button>
-            )}
+                </>
+              ) : (
+                <div style={{ 
+                  fontSize: '20px',
+                  color: '#479D90'
+                }}>→</div>
+              )}
+            </div>
           </Card>
         ))}
       </div>
+      
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {/* Connect Modal */}
       {showConnectModal && selectedApp && (
