@@ -261,27 +261,45 @@ export default function Profile() {
   };
 
   const handleSelectTelegramContact = () => {
-    // Use Telegram WebApp API to select a contact
-    if (window.Telegram?.WebApp?.requestContact) {
-      window.Telegram.WebApp.requestContact((contact) => {
-        if (contact) {
-          console.log("Selected contact from Telegram:", contact);
-          // contact.phone_number is available, but we need telegram_id
-          // For now, we'll use phone_number as identifier, but ideally we'd get telegram_id
-          setNewContact({
-            ...newContact,
-            name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.phone_number,
-            telegram: contact.phone_number || contact.user_id?.toString() || ""
-          });
+    // Telegram Mini Apps don't have a direct API to select from Telegram contacts list
+    // However, we can use the contact sharing feature
+    // The best approach is to use openTelegramLink with a special format
+    
+    if (window.Telegram?.WebApp) {
+      const webApp = window.Telegram.WebApp;
+      
+      // Try to use the contact sharing feature through a special link
+      // This will open the native contact picker in Telegram
+      // Format: tg://share?url=... opens the share dialog with contact picker
+      
+      try {
+        // Use the share link format to open contact picker
+        // This opens the native Telegram contact sharing dialog
+        const shareLink = "tg://share?url=https://t.me&text=Select%20contact";
+        
+        // Use openLink (preferred) or openTelegramLink (fallback)
+        if (webApp.openLink) {
+          webApp.openLink(shareLink);
+        } else if (webApp.openTelegramLink) {
+          webApp.openTelegramLink(shareLink);
+        } else {
+          // If neither is available, show instruction
+          alert(t("profile.enterContactManually") || "Please enter the contact's Telegram username (e.g., @username) or Telegram ID manually.");
+          return;
         }
-      });
-    } else if (window.Telegram?.WebApp?.openTelegramLink) {
-      // Fallback: open Telegram to select contact
-      // This is a workaround - ideally we'd use requestContact
-      alert(t("profile.selectContactManually"));
+        
+        // Show instruction to user
+        setTimeout(() => {
+          alert(t("profile.selectContactInstruction") || "The contact picker will open. Please select a contact from your Telegram contacts list. After selection, return here and enter the contact's username or ID in the field below.");
+        }, 300);
+      } catch (error) {
+        console.error("Error opening contact picker:", error);
+        // Fallback to manual entry
+        alert(t("profile.enterContactManually") || "Please enter the contact's Telegram username (e.g., @username) or Telegram ID manually.");
+      }
     } else {
-      // Fallback: manual entry
-      alert(t("profile.enterContactManually"));
+      // Fallback: show instruction for manual entry
+      alert(t("profile.enterContactManually") || "Please enter the contact's Telegram username (e.g., @username) or Telegram ID manually.");
     }
   };
 
