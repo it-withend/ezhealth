@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../ui/components/Card";
 import { EditIcon, DeleteIcon, AddIcon, LogoutIcon } from "../ui/icons/icons";
@@ -28,14 +28,7 @@ export default function Profile() {
   const [newContact, setNewContact] = useState({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
   const [loadingContacts, setLoadingContacts] = useState(true);
 
-  // Load trusted contacts from API on mount and when user changes
-  useEffect(() => {
-    // Always try to load contacts (backend can use initData from headers)
-    loadTrustedContacts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const loadTrustedContacts = async () => {
+  const loadTrustedContacts = useCallback(async () => {
     try {
       setLoadingContacts(true);
       const response = await api.get("/contacts");
@@ -69,7 +62,13 @@ export default function Profile() {
     } finally {
       setLoadingContacts(false);
     }
-  };
+  }, []);
+
+  // Load trusted contacts from API on mount and when user changes
+  useEffect(() => {
+    // Always try to load contacts (backend can use initData from headers)
+    loadTrustedContacts();
+  }, [user, loadTrustedContacts]);
 
   // Load profile from backend on mount and when user changes
   useEffect(() => {
