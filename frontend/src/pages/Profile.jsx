@@ -28,15 +28,14 @@ export default function Profile() {
   const [newContact, setNewContact] = useState({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
   const [loadingContacts, setLoadingContacts] = useState(true);
 
-  // Load trusted contacts from API
+  // Load trusted contacts from API on mount and when user changes
   useEffect(() => {
-    if (user) {
-      loadTrustedContacts();
-    }
+    // Always try to load contacts (backend can use initData from headers)
+    loadTrustedContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadTrustedContacts = async () => {
-    if (!user) return;
     try {
       setLoadingContacts(true);
       const response = await api.get("/contacts");
@@ -45,13 +44,21 @@ export default function Profile() {
       // Handle both array and object responses
       const contactsData = Array.isArray(response.data) ? response.data : (response.data.contacts || []);
       
-      const contacts = contactsData.map(c => ({
-        id: c.id,
-        name: c.contact_name || `@${c.contact_telegram_id}`,
-        telegram: c.contact_telegram_id,
-        canViewData: c.can_view_health_data === 1 || c.can_view_health_data === true,
-        canAlert: c.can_receive_alerts === 1 || c.can_receive_alerts === true
-      }));
+      const contacts = contactsData.map(c => {
+        // Format telegram ID for display - if it's numeric, show as ID, otherwise show as username
+        const telegramId = c.contact_telegram_id;
+        const isNumeric = /^\d+$/.test(telegramId);
+        const telegramDisplay = isNumeric ? telegramId : `@${telegramId}`;
+        
+        return {
+          id: c.id,
+          name: c.contact_name || telegramDisplay,
+          telegram: telegramId,
+          telegramDisplay: telegramDisplay,
+          canViewData: c.can_view_health_data === 1 || c.can_view_health_data === true,
+          canAlert: c.can_receive_alerts === 1 || c.can_receive_alerts === true
+        };
+      });
       
       console.log("Processed contacts:", contacts);
       setTrustedContacts(contacts);
@@ -254,6 +261,31 @@ export default function Profile() {
     }
   };
 
+  const handleSelectTelegramContact = () => {
+    // Use Telegram WebApp API to select a contact
+    if (window.Telegram?.WebApp?.requestContact) {
+      window.Telegram.WebApp.requestContact((contact) => {
+        if (contact) {
+          console.log("Selected contact from Telegram:", contact);
+          // contact.phone_number is available, but we need telegram_id
+          // For now, we'll use phone_number as identifier, but ideally we'd get telegram_id
+          setNewContact({
+            ...newContact,
+            name: `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.phone_number,
+            telegram: contact.phone_number || contact.user_id?.toString() || ""
+          });
+        }
+      });
+    } else if (window.Telegram?.WebApp?.openTelegramLink) {
+      // Fallback: open Telegram to select contact
+      // This is a workaround - ideally we'd use requestContact
+      alert(t("profile.selectContactManually"));
+    } else {
+      // Fallback: manual entry
+      alert(t("profile.enterContactManually"));
+    }
+  };
+
   const handleAddContact = async () => {
     if (!newContact.name || !newContact.telegram) {
       alert(t("profile.contactRequired"));
@@ -261,14 +293,14 @@ export default function Profile() {
     }
 
     try {
-      // Extract telegram ID - can be username or numeric ID
+      // Extract telegram ID - can be username, phone number, or numeric ID
       let telegramId = newContact.telegram.replace("@", "").trim();
       
-      // If it's a username (not numeric), we need to convert it
-      // For now, we'll try to parse as number, if it fails, we'll use the string
-      // In production, you'd need to resolve username to telegram_id via Bot API
+      // If it's a username (not numeric), we'll use the string as-is
+      // If it's a phone number, we'll use it as-is
+      // If it's numeric, we'll use it as-is
       const numericId = parseInt(telegramId);
-      const finalTelegramId = isNaN(numericId) ? telegramId : numericId;
+      const finalTelegramId = isNaN(numericId) ? telegramId : numericId.toString();
 
       console.log("Adding contact:", { finalTelegramId, name: newContact.name });
       const response = await api.post("/contacts", {
@@ -278,12 +310,13 @@ export default function Profile() {
         canReceiveAlerts: newContact.canReceiveAlerts
       });
       console.log("Contact added response:", response.data);
+      
+      // Clear form and close
       setNewContact({ name: "", telegram: "", canViewData: true, canReceiveAlerts: true });
       setShowAddContact(false);
-      // Wait a bit and reload contacts
-      setTimeout(() => {
-        loadTrustedContacts();
-      }, 500);
+      
+      // Reload contacts immediately
+      await loadTrustedContacts();
     } catch (error) {
       console.error("Error adding contact:", error);
       const errorMsg = error.response?.data?.error || error.message || t("profile.errorAddingContact");
@@ -522,12 +555,35 @@ export default function Profile() {
             </div>
             <div className="form-group">
               <label>{t("profile.contactTelegram")}</label>
-              <input
-                type="text"
-                placeholder="e.g., username or telegram_id"
-                value={newContact.telegram}
-                onChange={e => setNewContact({ ...newContact, telegram: e.target.value })}
-              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  placeholder={t("profile.contactTelegramPlaceholder") || "Username, phone, or Telegram ID"}
+                  value={newContact.telegram}
+                  onChange={e => setNewContact({ ...newContact, telegram: e.target.value })}
+                  style={{ flex: 1 }}
+                />
+                {window.Telegram?.WebApp?.requestContact && (
+                  <button
+                    type="button"
+                    className="select-contact-btn"
+                    onClick={handleSelectTelegramContact}
+                    title={t("profile.selectFromTelegram")}
+                    style={{
+                      padding: '8px 12px',
+                      background: '#0088cc',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    📱 {t("profile.selectFromTelegram")}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label>
@@ -567,7 +623,7 @@ export default function Profile() {
                     <div className="contact-icon">👤</div>
                     <div className="contact-details">
                       <div className="contact-name">{contact.name}</div>
-                      <div className="contact-handle">@{contact.telegram}</div>
+                      <div className="contact-handle">{contact.telegramDisplay || (contact.telegram && !/^\d+$/.test(contact.telegram) ? `@${contact.telegram}` : contact.telegram)}</div>
                       <div className="contact-permissions">
                         {contact.canViewData && <span className="permission-badge">{t("profile.canViewData")}</span>}
                         {contact.canAlert && <span className="permission-badge">{t("profile.canReceiveAlerts")}</span>}
