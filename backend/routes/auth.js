@@ -225,30 +225,46 @@ router.get('/google-fit/callback', async (req, res) => {
     console.log(`🔐 Headers:`, JSON.stringify(req.headers, null, 2));
     console.log(`🔐 Code: ${code ? 'present' : 'missing'}, State: ${state || 'undefined'}, Error: ${error || 'none'}`);
     
-    // Get userId from state or initData header
-    const initData = req.headers['x-telegram-init-data'];
+    // Get userId from state token stored in database
     let userId = null;
     
     if (state) {
-      // State contains userId if passed from frontend
-      userId = parseInt(state);
-      console.log(`🔐 UserId from state: ${userId}`);
-    } else if (initData) {
-      // Extract userId from Telegram initData
-      try {
-        const params = new URLSearchParams(initData);
-        const userParam = params.get('user');
-        if (userParam) {
-          const user = JSON.parse(decodeURIComponent(userParam));
-          const telegramId = user.id;
-          const userRecord = await dbGet('SELECT id FROM users WHERE telegram_id = ?', [telegramId]);
-          if (userRecord) {
-            userId = userRecord.id;
-            console.log(`🔐 UserId from initData: ${userId} (telegramId: ${telegramId})`);
+      // State is a token - look it up in oauth_states table
+      const oauthState = await dbGet(
+        'SELECT user_id FROM oauth_states WHERE state_token = ? AND expires_at > CURRENT_TIMESTAMP',
+        [state]
+      );
+      
+      if (oauthState) {
+        userId = oauthState.user_id;
+        console.log(`🔐 UserId from state token: ${userId}`);
+        
+        // Delete used state token (consume it)
+        await dbRun('DELETE FROM oauth_states WHERE state_token = ?', [state]);
+      } else {
+        console.error(`🔐 State token not found or expired: ${state.substring(0, 8)}...`);
+      }
+    }
+    
+    // Fallback: try to get userId from initData header (if available)
+    if (!userId) {
+      const initData = req.headers['x-telegram-init-data'];
+      if (initData) {
+        try {
+          const params = new URLSearchParams(initData);
+          const userParam = params.get('user');
+          if (userParam) {
+            const user = JSON.parse(decodeURIComponent(userParam));
+            const telegramId = user.id;
+            const userRecord = await dbGet('SELECT id FROM users WHERE telegram_id = ?', [telegramId]);
+            if (userRecord) {
+              userId = userRecord.id;
+              console.log(`🔐 UserId from initData (fallback): ${userId} (telegramId: ${telegramId})`);
+            }
           }
+        } catch (err) {
+          console.error('Error parsing initData:', err);
         }
-      } catch (err) {
-        console.error('Error parsing initData:', err);
       }
     }
     
@@ -326,8 +342,113 @@ router.get('/google-fit/callback', async (req, res) => {
     
     console.log(`✅ Google Fit connected for user ${userId}`);
     
-    // Redirect back to app
-    res.redirect(`${process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app'}/health?connected=google_fit&success=true`);
+    // Get Mini App URL from query params or use default
+    const miniAppUrl = req.query.mini_app_url || process.env.FRONTEND_URL || 'https://ezhealthapp.netlify.app';
+    
+    // Redirect back to Mini App with success flag
+    // Use tg:// link format to open in Telegram Mini App
+    const redirectUrl = `${miniAppUrl}/health?connected=google_fit&success=true&auto_sync=true`;
+    
+    // Try to redirect to Telegram Mini App first, fallback to regular redirect
+    const telegramRedirectUrl = `tg://resolve?domain=${process.env.TELEGRAM_BOT_USERNAME || 'your_bot'}&start=google_fit_connected`;
+    
+    // Send HTML page that will redirect to Mini App
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Google Fit Connected</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              text-align: center;
+              padding: 20px;
+            }
+            .container {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(10px);
+              border-radius: 20px;
+              padding: 40px;
+              max-width: 400px;
+              box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+              margin: 0 0 20px 0;
+              font-size: 24px;
+            }
+            p {
+              margin: 10px 0;
+              opacity: 0.9;
+            }
+            .spinner {
+              border: 3px solid rgba(255, 255, 255, 0.3);
+              border-top: 3px solid white;
+              border-radius: 50%;
+              width: 40px;
+              height: 40px;
+              animation: spin 1s linear infinite;
+              margin: 20px auto;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            .button {
+              display: inline-block;
+              margin-top: 20px;
+              padding: 12px 24px;
+              background: white;
+              color: #667eea;
+              text-decoration: none;
+              border-radius: 8px;
+              font-weight: 600;
+              transition: transform 0.2s;
+            }
+            .button:hover {
+              transform: scale(1.05);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>✅ Google Fit Connected!</h1>
+            <p>Your Google Fit account has been successfully connected.</p>
+            <div class="spinner"></div>
+            <p>Redirecting back to the app...</p>
+            <a href="${redirectUrl}" class="button">Return to App</a>
+          </div>
+          <script>
+            // Try to open in Telegram Mini App first
+            if (window.Telegram && window.Telegram.WebApp) {
+              // We're already in Mini App, just redirect
+              window.location.href = '${redirectUrl}';
+            } else {
+              // Try to open Telegram link
+              const telegramLink = '${telegramRedirectUrl}';
+              const fallbackLink = '${redirectUrl}';
+              
+              // Try to open Telegram, fallback to regular redirect
+              setTimeout(() => {
+                window.location.href = fallbackLink;
+              }, 2000);
+              
+              // Also try immediate redirect
+              window.location.href = fallbackLink;
+            }
+          </script>
+        </body>
+      </html>
+    `);
   } catch (error) {
     console.error('Google Fit OAuth callback error:', error);
     console.error('Error stack:', error.stack);

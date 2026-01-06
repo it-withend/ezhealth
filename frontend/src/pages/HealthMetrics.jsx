@@ -50,16 +50,49 @@ export default function HealthMetrics() {
   const { t } = useLanguage();
   const [selectedMetric, setSelectedMetric] = useState("pulse");
   
-  // Handle OAuth callback messages
+  // Handle OAuth callback messages and auto-sync
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const connected = params.get('connected');
     const success = params.get('success');
+    const autoSync = params.get('auto_sync');
     const error = params.get('error');
     const errorMessage = params.get('message');
     
     if (connected && success === 'true') {
-      alert(t("health.appConnected") || `Google Fit connected successfully! You can now sync your health data.`);
+      // Show success message
+      alert(t("health.appConnected") || `Google Fit connected successfully! Syncing your health data...`);
+      
+      // Auto-sync if requested
+      if (autoSync === 'true') {
+        // Find Google Fit app and trigger sync
+        setTimeout(async () => {
+          try {
+            const response = await api.get("/health/sync/apps");
+            const apps = response.data?.apps || [];
+            const googleFitApp = apps.find(app => app.id === 'google_fit' && app.connected);
+            
+            if (googleFitApp) {
+              console.log('🔄 Auto-syncing Google Fit data...');
+              // Trigger sync by calling the sync endpoint
+              await api.post(`/health/sync/sync/google_fit`, {}, {
+                params: { days: 7 }
+              });
+              console.log('✅ Auto-sync completed');
+              // Reload page to show synced data
+              window.location.reload();
+            }
+          } catch (syncError) {
+            console.error('Error during auto-sync:', syncError);
+            // Still reload to show connection status
+            window.location.reload();
+          }
+        }, 1000);
+      } else {
+        // Just reload to show connection status
+        window.location.reload();
+      }
+      
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (error) {
