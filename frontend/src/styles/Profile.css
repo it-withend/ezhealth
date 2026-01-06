@@ -127,6 +127,42 @@
   font-family: 'Montserrat', inherit;
 }
 
+.contact-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.contact-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.select-contact-btn {
+  padding: 10px 12px;
+  background: #0088cc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  font-family: 'Montserrat', inherit;
+}
+
+.select-contact-btn:hover {
+  background: #006ba3;
+  transform: scale(1.02);
+}
+
+.select-contact-btn:active {
+  transform: scale(0.98);
+}
+
 .form-group input:focus {
   border-color: #479D90;
   box-shadow: 0 0 0 3px rgba(71, 157, 144, 0.1);
@@ -527,6 +563,19 @@
 
   .contact-info {
     width: 100%;
+  }
+
+  .contact-input-wrapper {
+    flex-direction: column;
+  }
+
+  .contact-input {
+    width: 100%;
+  }
+
+  .select-contact-btn {
+    width: 100%;
+    padding: 12px;
   }
 }
 

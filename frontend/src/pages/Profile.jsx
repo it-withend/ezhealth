@@ -262,45 +262,17 @@ export default function Profile() {
 
   const handleSelectTelegramContact = () => {
     // Telegram Mini Apps don't have a direct API to select from Telegram contacts list
-    // However, we can use the contact sharing feature
-    // The best approach is to use openTelegramLink with a special format
+    // The requestContact() method requests device contacts, not Telegram contacts
+    // We'll provide helpful instructions instead
     
-    if (window.Telegram?.WebApp) {
-      const webApp = window.Telegram.WebApp;
-      
-      // Try to use the contact sharing feature through a special link
-      // This will open the native contact picker in Telegram
-      // Format: tg://share?url=... opens the share dialog with contact picker
-      
-      try {
-        // Use the share link format to open contact picker
-        // This opens the native Telegram contact sharing dialog
-        const shareLink = "tg://share?url=https://t.me&text=Select%20contact";
-        
-        // Use openLink (preferred) or openTelegramLink (fallback)
-        if (webApp.openLink) {
-          webApp.openLink(shareLink);
-        } else if (webApp.openTelegramLink) {
-          webApp.openTelegramLink(shareLink);
-        } else {
-          // If neither is available, show instruction
-          alert(t("profile.enterContactManually") || "Please enter the contact's Telegram username (e.g., @username) or Telegram ID manually.");
-          return;
-        }
-        
-        // Show instruction to user
-        setTimeout(() => {
-          alert(t("profile.selectContactInstruction") || "The contact picker will open. Please select a contact from your Telegram contacts list. After selection, return here and enter the contact's username or ID in the field below.");
-        }, 300);
-      } catch (error) {
-        console.error("Error opening contact picker:", error);
-        // Fallback to manual entry
-        alert(t("profile.enterContactManually") || "Please enter the contact's Telegram username (e.g., @username) or Telegram ID manually.");
-      }
-    } else {
-      // Fallback: show instruction for manual entry
-      alert(t("profile.enterContactManually") || "Please enter the contact's Telegram username (e.g., @username) or Telegram ID manually.");
-    }
+    const instruction = t("profile.contactSelectionHelp") || 
+      "To add a contact:\n\n" +
+      "1. Enter the contact's Telegram username (e.g., @username)\n" +
+      "2. Or enter their Telegram ID (numeric)\n" +
+      "3. Or enter their phone number\n\n" +
+      "You can find a contact's username in their Telegram profile.";
+    
+    alert(instruction);
   };
 
   const handleAddContact = async () => {
@@ -572,34 +544,22 @@ export default function Profile() {
             </div>
             <div className="form-group">
               <label>{t("profile.contactTelegram")}</label>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div className="contact-input-wrapper">
                 <input
                   type="text"
                   placeholder={t("profile.contactTelegramPlaceholder") || "Username, phone, or Telegram ID"}
                   value={newContact.telegram}
                   onChange={e => setNewContact({ ...newContact, telegram: e.target.value })}
-                  style={{ flex: 1 }}
+                  className="contact-input"
                 />
-                {window.Telegram?.WebApp?.requestContact && (
-                  <button
-                    type="button"
-                    className="select-contact-btn"
-                    onClick={handleSelectTelegramContact}
-                    title={t("profile.selectFromTelegram")}
-                    style={{
-                      padding: '8px 12px',
-                      background: '#0088cc',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    📱 {t("profile.selectFromTelegram")}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="select-contact-btn"
+                  onClick={handleSelectTelegramContact}
+                  title={t("profile.selectFromTelegram")}
+                >
+                  📱 {t("profile.selectFromTelegram")}
+                </button>
               </div>
             </div>
             <div className="form-group">
