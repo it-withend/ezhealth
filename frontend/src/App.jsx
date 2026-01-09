@@ -36,11 +36,42 @@ const logAppEvent = (event, data) => {
 // #endregion
 
 function AppRoutes() {
-  const { subscriptionChecked, isSubscribed, loading } = useAuth();
+  const auth = useAuth();
+  const { subscriptionChecked = false, isSubscribed = false, loading = true } = auth || {};
 
-  // Show subscription screen if not subscribed
-  if (!loading && subscriptionChecked && !isSubscribed) {
+  // Show subscription screen if not subscribed (only after check is complete)
+  if (!loading && subscriptionChecked === true && isSubscribed === false) {
     return <SubscriptionRequired />;
+  }
+
+  // Show loading while checking subscription
+  if (loading || subscriptionChecked === false) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <div style={{ 
+          width: '40px', 
+          height: '40px', 
+          border: '4px solid #f3f3f3',
+          borderTop: '4px solid #2D9B8C',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <p>Loading...</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
