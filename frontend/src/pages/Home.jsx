@@ -25,13 +25,6 @@ export default function Home() {
             specialty: "Dental Specialist",
             date: "Tomorrow (Thu, August 14)",
             time: "9:00 - 9:30 AM"
-          },
-          {
-            id: 2,
-            doctor: "Dr. Courtney",
-            specialty: "General Practitioner",
-            date: "Fri, August 15",
-            time: "10:00 - 5:30 PM"
           }
         ],
         nearby: [
