@@ -11,9 +11,10 @@ import Reminders from "./pages/Reminders";
 import Profile from "./pages/Profile";
 import Documents from "./pages/Documents";
 import GenerateReport from "./pages/GenerateReport";
+import SubscriptionRequired from "./pages/SubscriptionRequired";
 
 import BottomNav from "./ui/components/BottomNav";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LanguageProvider } from "./context/LanguageContext";
 
 // #region agent log
@@ -34,19 +35,17 @@ const logAppEvent = (event, data) => {
 };
 // #endregion
 
-function App() {
-  // #region agent log
-  React.useEffect(() => {
-    logAppEvent('App mounted', { path: window.location.pathname });
-  }, []);
-  // #endregion
+function AppRoutes() {
+  const { subscriptionChecked, isSubscribed, loading } = useAuth();
+
+  // Show subscription screen if not subscribed
+  if (!loading && subscriptionChecked && !isSubscribed) {
+    return <SubscriptionRequired />;
+  }
 
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <BrowserRouter>
-        <Routes>
-        <Route path="/" element={<Onboarding />} />
+    <Routes>
+      <Route path="/" element={<Onboarding />} />
 
         <Route
           path="/home"
@@ -137,8 +136,23 @@ function App() {
             </>
           }
         />
-        </Routes>
-      </BrowserRouter>
+      </Routes>
+  );
+}
+
+function App() {
+  // #region agent log
+  React.useEffect(() => {
+    logAppEvent('App mounted', { path: window.location.pathname });
+  }, []);
+  // #endregion
+
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
       </AuthProvider>
     </LanguageProvider>
   );

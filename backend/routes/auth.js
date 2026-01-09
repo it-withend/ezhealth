@@ -163,6 +163,63 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// Check channel subscription
+router.get('/check-subscription', async (req, res) => {
+  try {
+    const telegramId = req.query.telegram_id || req.query.user_id;
+    
+    if (!telegramId) {
+      return res.status(400).json({ error: 'telegram_id is required' });
+    }
+
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      console.warn('⚠️ TELEGRAM_BOT_TOKEN not configured - allowing bypass for subscription check');
+      return res.json({ subscribed: true, bypass: true });
+    }
+
+    const channelUsername = process.env.REQUIRED_CHANNEL || '@nedoproggramist';
+    const channelId = channelUsername.startsWith('@') ? channelUsername : `@${channelUsername}`;
+
+    try {
+      // Use Telegram Bot API to check subscription
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const apiUrl = `https://api.telegram.org/bot${botToken}/getChatMember`;
+      
+      const response = await fetch(`${apiUrl}?chat_id=${encodeURIComponent(channelId)}&user_id=${telegramId}`);
+      const data = await response.json();
+
+      if (!data.ok) {
+        console.error('Telegram API error:', data);
+        // If bot is not admin or channel doesn't exist, allow access (for development)
+        if (data.error_code === 400 || data.error_code === 403) {
+          console.warn(`⚠️ Cannot check subscription: ${data.description}. Allowing access.`);
+          return res.json({ subscribed: true, error: data.description });
+        }
+        return res.status(500).json({ error: 'Failed to check subscription', details: data });
+      }
+
+      const status = data.result?.status;
+      // Valid subscription statuses: 'member', 'administrator', 'creator'
+      const subscribed = status === 'member' || status === 'administrator' || status === 'creator';
+
+      console.log(`📋 Subscription check for user ${telegramId} in ${channelId}: ${status} (subscribed: ${subscribed})`);
+
+      res.json({ 
+        subscribed,
+        status,
+        channel: channelId
+      });
+    } catch (apiError) {
+      console.error('Error checking subscription:', apiError);
+      // In case of error, allow access (fail open for better UX)
+      res.json({ subscribed: true, error: apiError.message });
+    }
+  } catch (error) {
+    console.error('Check subscription error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Initialize Google Fit OAuth - create state token
 router.post('/google-fit/init', async (req, res) => {
   try {

@@ -1,0 +1,137 @@
+.subscription-required-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.subscription-content {
+  background: white;
+  border-radius: 24px;
+  padding: 40px 30px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.subscription-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.subscription-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
+}
+
+.subscription-description {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.channel-info {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 0 0 24px 0;
+}
+
+.channel-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #667eea;
+  font-family: 'Courier New', monospace;
+}
+
+.subscription-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.btn-subscribe,
+.btn-check {
+  padding: 14px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.btn-subscribe {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-subscribe:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-subscribe:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-check {
+  background: #2D9B8C;
+  color: white;
+}
+
+.btn-check:hover:not(:disabled) {
+  background: #239a8a;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(45, 155, 140, 0.4);
+}
+
+.btn-check:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-subscribe:disabled,
+.btn-check:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.subscription-hint {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  .subscription-content {
+    padding: 30px 20px;
+  }
+
+  .subscription-title {
+    font-size: 20px;
+  }
+
+  .subscription-description {
+    font-size: 14px;
+  }
+}

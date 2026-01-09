@@ -220,6 +220,17 @@ export const translations = {
       title: "Your digital healthcare assistant",
       subtitle: "Book appointments, review doctors and track your medical history",
       getStarted: "Get Started"
+    },
+    // Subscription
+    subscription: {
+      title: "Subscription Required",
+      description: "To use this bot, you need to subscribe to our channel:",
+      openChannel: "Open Channel",
+      checkSubscription: "I've Subscribed",
+      checking: "Checking...",
+      hint: "1. Click 'Open Channel' to subscribe\n2. Then click 'I've Subscribed' to verify",
+      notSubscribed: "You are not subscribed to the channel. Please subscribe first.",
+      noTelegramId: "Telegram user ID not found. Please open this app from Telegram."
     }
   },
   ru: {
@@ -441,6 +452,17 @@ export const translations = {
       title: "Ваш цифровой помощник по здоровью",
       subtitle: "Записывайтесь на приёмы, читайте отзывы о врачах и отслеживайте медицинскую историю",
       getStarted: "Начать"
+    },
+    // Subscription
+    subscription: {
+      title: "Требуется подписка",
+      description: "Для использования бота необходимо подписаться на наш канал:",
+      openChannel: "Открыть канал",
+      checkSubscription: "Я подписался",
+      checking: "Проверка...",
+      hint: "1. Нажмите 'Открыть канал' для подписки\n2. Затем нажмите 'Я подписался' для проверки",
+      notSubscribed: "Вы не подписаны на канал. Пожалуйста, подпишитесь сначала.",
+      noTelegramId: "ID пользователя Telegram не найден. Пожалуйста, откройте приложение из Telegram."
     }
   },
   uz: {
@@ -663,6 +685,17 @@ export const translations = {
       title: "Sizning raqamli salomatlik yordamchingiz",
       subtitle: "Qabulga yoziling, shifokorlar sharhlarini o'qing va tibbiy tarixni kuzatib boring",
       getStarted: "Boshlash"
+    },
+    // Subscription
+    subscription: {
+      title: "Obuna talab qilinadi",
+      description: "Botdan foydalanish uchun bizning kanalimizga obuna bo'lishingiz kerak:",
+      openChannel: "Kanalni ochish",
+      checkSubscription: "Men obuna bo'ldim",
+      checking: "Tekshirilmoqda...",
+      hint: "1. Obuna bo'lish uchun 'Kanalni ochish'ni bosing\n2. Keyin tekshirish uchun 'Men obuna bo'ldim'ni bosing",
+      notSubscribed: "Siz kanalga obuna bo'lmagansiz. Iltimos, avval obuna bo'ling.",
+      noTelegramId: "Telegram foydalanuvchi ID topilmadi. Iltimos, ilovani Telegramdan oching."
     }
   }
 };

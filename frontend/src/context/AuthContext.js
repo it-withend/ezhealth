@@ -47,6 +47,27 @@ export const AuthProvider = ({ children }) => {
             })
           }).catch(() => {});
           // #endregion
+          
+          // Check subscription for restored user
+          if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+            const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+            try {
+              const subscriptionRes = await api.get("/auth/check-subscription", {
+                params: { telegram_id: tgUser.id }
+              });
+              setIsSubscribed(subscriptionRes.data.subscribed || false);
+              setSubscriptionChecked(true);
+            } catch (subError) {
+              console.error("Subscription check error:", subError);
+              setIsSubscribed(true);
+              setSubscriptionChecked(true);
+            }
+          } else {
+            // If no Telegram context, allow access (development mode)
+            setIsSubscribed(true);
+            setSubscriptionChecked(true);
+          }
+          
           setLoading(false);
           setInitialized(true);
           return;
@@ -70,6 +91,9 @@ export const AuthProvider = ({ children }) => {
           }).catch(() => {});
           // #endregion
           console.warn("Not in Telegram Mini App");
+          // In development mode, allow access without subscription check
+          setIsSubscribed(true);
+          setSubscriptionChecked(true);
           setLoading(false);
           setInitialized(true);
           return;
@@ -96,6 +120,8 @@ export const AuthProvider = ({ children }) => {
           }).catch(() => {});
           // #endregion
           console.warn("No Telegram user");
+          setIsSubscribed(true);
+          setSubscriptionChecked(true);
           setLoading(false);
           setInitialized(true);
           return;
@@ -144,6 +170,22 @@ export const AuthProvider = ({ children }) => {
 
         setUser(res.data);
         localStorage.setItem("user", JSON.stringify(res.data));
+
+        // Check subscription after successful auth
+        if (res.data && res.data.id) {
+          try {
+            const subscriptionRes = await api.get("/auth/check-subscription", {
+              params: { telegram_id: tgUser.id }
+            });
+            setIsSubscribed(subscriptionRes.data.subscribed || false);
+            setSubscriptionChecked(true);
+          } catch (subError) {
+            console.error("Subscription check error:", subError);
+            // If subscription check fails, allow access (fail open)
+            setIsSubscribed(true);
+            setSubscriptionChecked(true);
+          }
+        }
       } catch (err) {
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/107767b9-5ae8-4ca1-ba4d-b963fcffccb7', {
@@ -161,6 +203,24 @@ export const AuthProvider = ({ children }) => {
         }).catch(() => {});
         // #endregion
         console.error("Auth error:", err);
+        // On error, still check subscription status if we have Telegram user
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+          const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+          try {
+            const subscriptionRes = await api.get("/auth/check-subscription", {
+              params: { telegram_id: tgUser.id }
+            });
+            setIsSubscribed(subscriptionRes.data.subscribed || false);
+            setSubscriptionChecked(true);
+          } catch (subError) {
+            console.error("Subscription check error:", subError);
+            setIsSubscribed(true);
+            setSubscriptionChecked(true);
+          }
+        } else {
+          setIsSubscribed(true);
+          setSubscriptionChecked(true);
+        }
       } finally {
         setLoading(false);
         setInitialized(true);
@@ -172,8 +232,32 @@ export const AuthProvider = ({ children }) => {
     }
   }, [initialized]);
 
+  const checkSubscription = async (telegramId) => {
+    try {
+      const subscriptionRes = await api.get("/auth/check-subscription", {
+        params: { telegram_id: telegramId }
+      });
+      setIsSubscribed(subscriptionRes.data.subscribed || false);
+      setSubscriptionChecked(true);
+      return subscriptionRes.data.subscribed || false;
+    } catch (subError) {
+      console.error("Subscription check error:", subError);
+      setIsSubscribed(true);
+      setSubscriptionChecked(true);
+      return true;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      subscriptionChecked, 
+      isSubscribed,
+      setIsSubscribed,
+      setSubscriptionChecked,
+      checkSubscription
+    }}>
       {children}
     </AuthContext.Provider>
   );
